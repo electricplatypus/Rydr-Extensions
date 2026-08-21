@@ -6,12 +6,15 @@ import { CategoryId, ItemInput, MarketplaceItem, RydrCategory, isThemeCategory }
 
 const RYDR_CATEGORIES: RydrCategory[] = ["display", "media", "performance", "navigation", "weather", "theme", "tool"];
 
+// Matches Rydr's own custom-theme color roles exactly (js/dashboard.js
+// deriveCustomThemeVars) so an installed marketplace theme drops straight
+// into Rydr's existing theme-grid mechanism with no remapping.
 const DEFAULT_APP_THEME_COLORS: Record<string, string> = {
   bg: "#0b0d12",
   panel: "#12151c",
+  primary: "#ff6a00",
+  secondary: "#7d8ba0",
   text: "#f4f6fa",
-  muted: "#7d8ba0",
-  accent: "#ff6a00",
 };
 
 const DEFAULT_TRACKHUD_THEME_COLORS: Record<string, string> = {

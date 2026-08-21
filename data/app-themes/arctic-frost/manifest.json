@@ -12,9 +12,9 @@
   "colors": {
     "bg": "#eef3f8",
     "panel": "#ffffff",
-    "text": "#151c26",
-    "muted": "#5b6b7c",
-    "accent": "#2f8fd6"
+    "primary": "#2f8fd6",
+    "secondary": "#5b6b7c",
+    "text": "#151c26"
   },
   "createdAt": "2026-08-01T12:00:00.000Z",
   "updatedAt": "2026-08-01T12:00:00.000Z",
