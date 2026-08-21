@@ -1,0 +1,16 @@
+{
+  "id": "hourly-precip",
+  "category": "plugins",
+  "name": "Hourly Precipitation",
+  "description": "An animated hourly chance-of-rain forecast with a soft weather-condition background — sun, rain, and clouds swept across the same hours the chart shows.",
+  "author": "electricplatypus",
+  "version": "1.0.0",
+  "icon": "☔",
+  "repo": "github.com/electricplatypus/rydr",
+  "entryFile": "hourly-precip.js",
+  "rydrCategory": "weather",
+  "createdAt": "2026-07-10T08:45:00.000Z",
+  "updatedAt": "2026-07-10T08:45:00.000Z",
+  "downloads": 143,
+  "tags": ["weather", "forecast", "standalone"]
+}

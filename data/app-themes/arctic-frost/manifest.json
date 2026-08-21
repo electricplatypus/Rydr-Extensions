@@ -1,0 +1,23 @@
+{
+  "id": "arctic-frost",
+  "category": "app-themes",
+  "name": "Arctic Frost",
+  "description": "A crisp light dashboard theme with icy blue accents, tuned for bright daylight riding.",
+  "author": "rydr-extensions",
+  "version": "1.0.0",
+  "icon": "🩵",
+  "repo": "github.com/electricplatypus/rydr-extensions",
+  "entryFile": "arctic-frost.json",
+  "rydrCategory": "theme",
+  "colors": {
+    "bg": "#eef3f8",
+    "panel": "#ffffff",
+    "text": "#151c26",
+    "muted": "#5b6b7c",
+    "accent": "#2f8fd6"
+  },
+  "createdAt": "2026-08-01T12:00:00.000Z",
+  "updatedAt": "2026-08-01T12:00:00.000Z",
+  "downloads": 29,
+  "tags": ["theme", "light", "cool"]
+}

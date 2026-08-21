@@ -1,0 +1,16 @@
+{
+  "id": "ride-journal",
+  "category": "view-extensions",
+  "name": "Ride Journal",
+  "description": "A freeform journal for jotting notes about a ride, in its own full-screen view with a sidebar entry.",
+  "author": "rydr-extensions",
+  "version": "1.0.0",
+  "icon": "📓",
+  "repo": "github.com/electricplatypus/rydr-extensions",
+  "entryFile": "ride-journal.js",
+  "rydrCategory": "tool",
+  "createdAt": "2026-08-02T09:30:00.000Z",
+  "updatedAt": "2026-08-02T09:30:00.000Z",
+  "downloads": 7,
+  "tags": ["view-extension", "journal"]
+}

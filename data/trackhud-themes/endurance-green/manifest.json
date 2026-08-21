@@ -1,0 +1,22 @@
+{
+  "id": "endurance-green",
+  "category": "trackhud-themes",
+  "name": "Endurance Green",
+  "description": "A low-glare, dark-green Track HUD palette designed for long endurance stints and reduced eye strain at night.",
+  "author": "rydr-extensions",
+  "version": "1.0.0",
+  "icon": "🟢",
+  "repo": "github.com/electricplatypus/rydr-extensions",
+  "entryFile": "endurance-green.json",
+  "rydrCategory": "theme",
+  "colors": {
+    "hud-bg": "#06110a",
+    "hud-text": "#e9fff2",
+    "hud-accent": "#22c55e",
+    "hud-gauge": "#2f6b4a"
+  },
+  "createdAt": "2026-08-15T14:00:00.000Z",
+  "updatedAt": "2026-08-15T14:00:00.000Z",
+  "downloads": 5,
+  "tags": ["trackhud", "theme", "endurance"]
+}

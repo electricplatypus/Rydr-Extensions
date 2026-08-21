@@ -1,0 +1,10 @@
+{
+  "id": "endurance-green",
+  "name": "Endurance Green",
+  "colors": {
+    "hud-bg": "#06110a",
+    "hud-text": "#e9fff2",
+    "hud-accent": "#22c55e",
+    "hud-gauge": "#2f6b4a"
+  }
+}

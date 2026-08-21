@@ -1,0 +1,16 @@
+{
+  "id": "demo-plugin",
+  "category": "tools-utilities",
+  "name": "Demo Plugin",
+  "description": "A reference plugin for testing the RydR plugin manager — a minimal dashboard card plus a matching screensaver widget.",
+  "author": "electricplatypus",
+  "version": "1.0.0",
+  "icon": "🧪",
+  "repo": "github.com/electricplatypus/rydr",
+  "entryFile": "demo-plugin.js",
+  "rydrCategory": "tool",
+  "createdAt": "2026-04-18T12:00:00.000Z",
+  "updatedAt": "2026-04-18T12:00:00.000Z",
+  "downloads": 54,
+  "tags": ["reference", "developer"]
+}

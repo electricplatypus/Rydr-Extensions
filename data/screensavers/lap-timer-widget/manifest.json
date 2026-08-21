@@ -1,0 +1,16 @@
+{
+  "id": "lap-timer-widget",
+  "category": "screensavers",
+  "name": "Lap Timer",
+  "description": "A flat OLED-friendly screensaver widget showing the current ride duration as a lap clock.",
+  "author": "rydr-extensions",
+  "version": "1.0.0",
+  "icon": "⏱️",
+  "repo": "github.com/electricplatypus/rydr-extensions",
+  "entryFile": "lap-timer-widget.js",
+  "rydrCategory": "display",
+  "createdAt": "2026-07-22T15:00:00.000Z",
+  "updatedAt": "2026-07-22T15:00:00.000Z",
+  "downloads": 12,
+  "tags": ["screensaver", "timer"]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "screensaver-example",
+  "category": "screensavers",
+  "name": "Screensaver Example",
+  "description": "Shows how a plugin can add a compact widget to the screensaver as well as a dashboard card.",
+  "author": "electricplatypus",
+  "version": "1.0.0",
+  "icon": "🖥️",
+  "repo": "github.com/electricplatypus/rydr",
+  "entryFile": "screensaver-example.js",
+  "rydrCategory": "display",
+  "createdAt": "2026-04-10T09:00:00.000Z",
+  "updatedAt": "2026-04-10T09:00:00.000Z",
+  "downloads": 38,
+  "tags": ["reference", "screensaver"]
+}

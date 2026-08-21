@@ -1,0 +1,23 @@
+{
+  "id": "midnight-copper",
+  "category": "app-themes",
+  "name": "Midnight Copper",
+  "description": "A deep charcoal dashboard theme with warm copper accents — self-applying (see note on the item page about Rydr's theme-install hook).",
+  "author": "rydr-extensions",
+  "version": "1.0.0",
+  "icon": "🟠",
+  "repo": "github.com/electricplatypus/rydr-extensions",
+  "entryFile": "midnight-copper.json",
+  "rydrCategory": "theme",
+  "colors": {
+    "bg": "#14100d",
+    "panel": "#1e1712",
+    "text": "#f5ece2",
+    "muted": "#a68f7a",
+    "accent": "#c9772f"
+  },
+  "createdAt": "2026-07-15T12:00:00.000Z",
+  "updatedAt": "2026-07-15T12:00:00.000Z",
+  "downloads": 63,
+  "tags": ["theme", "dark", "warm"]
+}

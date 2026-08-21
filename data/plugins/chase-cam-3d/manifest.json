@@ -1,0 +1,16 @@
+{
+  "id": "chase-cam-3d",
+  "category": "plugins",
+  "name": "3D Chase Cam",
+  "description": "A live MapLibre + 3D bike chase camera that follows your real GPS position on a tilted dark map with a glowing orange trail.",
+  "author": "electricplatypus",
+  "version": "1.0.0",
+  "icon": "🎥",
+  "repo": "github.com/electricplatypus/rydr",
+  "entryFile": "chase-cam-3d.js",
+  "rydrCategory": "navigation",
+  "createdAt": "2026-06-22T16:30:00.000Z",
+  "updatedAt": "2026-06-22T16:30:00.000Z",
+  "downloads": 97,
+  "tags": ["map", "3d", "navigation", "standalone"]
+}

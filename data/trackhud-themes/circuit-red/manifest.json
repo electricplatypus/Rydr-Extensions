@@ -1,0 +1,22 @@
+{
+  "id": "circuit-red",
+  "category": "trackhud-themes",
+  "name": "Circuit Red",
+  "description": "A racing-red Track HUD palette for gauges and the telemetry brand bar — pairs the HUD's dark shell with a hot-red accent.",
+  "author": "rydr-extensions",
+  "version": "1.0.0",
+  "icon": "🔴",
+  "repo": "github.com/electricplatypus/rydr-extensions",
+  "entryFile": "circuit-red.json",
+  "rydrCategory": "theme",
+  "colors": {
+    "hud-bg": "#120607",
+    "hud-text": "#ffffff",
+    "hud-accent": "#e61f2c",
+    "hud-gauge": "#8a3037"
+  },
+  "createdAt": "2026-07-30T14:00:00.000Z",
+  "updatedAt": "2026-07-30T14:00:00.000Z",
+  "downloads": 18,
+  "tags": ["trackhud", "theme", "racing"]
+}

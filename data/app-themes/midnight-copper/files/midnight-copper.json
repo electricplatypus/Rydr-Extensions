@@ -1,0 +1,11 @@
+{
+  "id": "midnight-copper",
+  "name": "Midnight Copper",
+  "colors": {
+    "bg": "#14100d",
+    "panel": "#1e1712",
+    "text": "#f5ece2",
+    "muted": "#a68f7a",
+    "accent": "#c9772f"
+  }
+}

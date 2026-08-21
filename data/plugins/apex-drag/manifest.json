@@ -1,0 +1,16 @@
+{
+  "id": "apex-drag",
+  "category": "plugins",
+  "name": "Apex Drag & Launch Telemetry",
+  "description": "High-performance drag timing for 1/4 mi, 1/2 mi, 1 mi & 0-60 runs with auto launch trigger, run history logs, and social share graphics.",
+  "author": "electricplatypus",
+  "version": "1.0.0",
+  "icon": "🏁",
+  "repo": "github.com/electricplatypus/rydr",
+  "entryFile": "apex-drag.js",
+  "rydrCategory": "performance",
+  "createdAt": "2026-06-05T13:00:00.000Z",
+  "updatedAt": "2026-06-05T13:00:00.000Z",
+  "downloads": 189,
+  "tags": ["performance", "drag-timing", "standalone"]
+}

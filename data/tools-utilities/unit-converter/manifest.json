@@ -1,0 +1,16 @@
+{
+  "id": "unit-converter",
+  "category": "tools-utilities",
+  "name": "Unit Converter",
+  "description": "A quick speed/distance/volume unit converter dashboard card for imperial/metric riders.",
+  "author": "rydr-extensions",
+  "version": "1.0.0",
+  "icon": "🔁",
+  "repo": "github.com/electricplatypus/rydr-extensions",
+  "entryFile": "unit-converter.js",
+  "rydrCategory": "tool",
+  "createdAt": "2026-08-10T11:00:00.000Z",
+  "updatedAt": "2026-08-10T11:00:00.000Z",
+  "downloads": 4,
+  "tags": ["utility", "units", "converter"]
+}

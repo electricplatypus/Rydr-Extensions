@@ -1,0 +1,16 @@
+{
+  "id": "spotify-playlists",
+  "category": "plugins",
+  "name": "Spotify Playlists",
+  "description": "Browse your Spotify playlists as a list or a thumbnail grid, with sort and quick-play.",
+  "author": "electricplatypus",
+  "version": "1.2.0",
+  "icon": "🎵",
+  "repo": "github.com/electricplatypus/rydr",
+  "entryFile": "spotify-playlists.js",
+  "rydrCategory": "media",
+  "createdAt": "2026-05-20T09:15:00.000Z",
+  "updatedAt": "2026-07-01T11:40:00.000Z",
+  "downloads": 268,
+  "tags": ["music", "spotify", "standalone"]
+}

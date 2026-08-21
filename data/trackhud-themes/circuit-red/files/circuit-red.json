@@ -1,0 +1,10 @@
+{
+  "id": "circuit-red",
+  "name": "Circuit Red",
+  "colors": {
+    "hud-bg": "#120607",
+    "hud-text": "#ffffff",
+    "hud-accent": "#e61f2c",
+    "hud-gauge": "#8a3037"
+  }
+}
