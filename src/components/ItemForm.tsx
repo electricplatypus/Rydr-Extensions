@@ -97,7 +97,14 @@ export function ItemForm({
       return;
     }
 
-    router.push("/admin");
+    if (initial) {
+      router.push("/admin");
+    } else {
+      // Newly created items have no files yet — land on the edit page so
+      // the rider can immediately upload the entry file/assets.
+      const created = await res.json();
+      router.push(`/admin/${category}/${created.id}/edit`);
+    }
     router.refresh();
   }
 

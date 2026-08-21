@@ -142,3 +142,40 @@ export function incrementDownloads(category: CategoryId, id: string): Marketplac
 export function itemFilesDir(category: CategoryId, id: string): string {
   return path.join(itemDir(category, id), "files");
 }
+
+export interface ItemFileInfo {
+  name: string;
+  size: number;
+}
+
+export function listItemFiles(category: CategoryId, id: string): ItemFileInfo[] {
+  const dir = itemFilesDir(category, id);
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => ({
+      name: entry.name,
+      size: fs.statSync(path.join(dir, entry.name)).size,
+    }));
+}
+
+const SAFE_FILENAME = /^[a-zA-Z0-9._-]+$/;
+
+export function isSafeFilename(name: string): boolean {
+  return SAFE_FILENAME.test(name) && name !== "." && name !== "..";
+}
+
+export function saveItemFile(category: CategoryId, id: string, filename: string, data: Buffer): void {
+  if (!isSafeFilename(filename)) throw new Error("Invalid filename.");
+  const dir = itemFilesDir(category, id);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, filename), data);
+}
+
+export function deleteItemFile(category: CategoryId, id: string, filename: string): void {
+  if (!isSafeFilename(filename)) throw new Error("Invalid filename.");
+  const filePath = path.join(itemFilesDir(category, id), filename);
+  if (!fs.existsSync(filePath)) throw new Error("File not found.");
+  fs.rmSync(filePath);
+}
