@@ -1,4 +1,14 @@
+import { MarketplaceItem } from "./types";
+
 const GITHUB_API = "https://api.github.com";
+
+export class GithubApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
 
 function githubConfig() {
   const token = process.env.GITHUB_TOKEN;
@@ -6,14 +16,18 @@ function githubConfig() {
   const branch = process.env.GITHUB_BRANCH || "main";
   if (!token) {
     throw new Error(
-      "GITHUB_TOKEN is not configured. Add a repo-scoped GitHub token as an environment variable (locally in .env, or in the Vercel project's Environment Variables) to enable committing uploads to GitHub."
+      "GITHUB_TOKEN is not configured. Add a repo-scoped GitHub token as an environment variable (locally in .env, or in the Vercel project's Environment Variables) — the marketplace reads and writes this repo directly, so it's required even for local dev."
     );
   }
   const [owner, name] = repo.split("/");
   return { token, owner, name, branch };
 }
 
-async function gh(path: string, init?: RequestInit) {
+function encodePath(path: string): string {
+  return path.split("/").map(encodeURIComponent).join("/");
+}
+
+async function ghRaw(path: string, init?: RequestInit): Promise<{ status: number; body: unknown }> {
   const { token } = githubConfig();
   const res = await fetch(`${GITHUB_API}${path}`, {
     ...init,
@@ -23,23 +37,82 @@ async function gh(path: string, init?: RequestInit) {
       "Content-Type": "application/json",
       ...(init?.headers || {}),
     },
+    cache: "no-store",
   });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`GitHub API ${path} failed: ${res.status} ${body}`);
+  const text = await res.text();
+  const body = text ? JSON.parse(text) : null;
+  return { status: res.status, body };
+}
+
+async function gh(path: string, init?: RequestInit) {
+  const { status, body } = await ghRaw(path, init);
+  if (status < 200 || status >= 300) {
+    throw new GithubApiError(status, `GitHub API ${path} failed: ${status} ${JSON.stringify(body)}`);
   }
-  return res.json();
+  return body as Record<string, any>;
+}
+
+/** Retries a read-modify-write cycle once if the branch moved underneath it (409/422 on ref update). */
+export async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    if (err instanceof GithubApiError && (err.status === 409 || err.status === 422)) {
+      return fn();
+    }
+    throw err;
+  }
+}
+
+/** Fetches data/index.json — the fast-read aggregate of every item's metadata. Returns [] if it doesn't exist yet. */
+export async function getIndex(): Promise<MarketplaceItem[]> {
+  const { owner, name, branch } = githubConfig();
+  const { status, body } = await ghRaw(`/repos/${owner}/${name}/contents/data/index.json?ref=${branch}`);
+  if (status === 404) return [];
+  if (status < 200 || status >= 300) {
+    throw new GithubApiError(status, `GitHub API index fetch failed: ${status} ${JSON.stringify(body)}`);
+  }
+  const content = Buffer.from((body as { content: string }).content, "base64").toString("utf-8");
+  return JSON.parse(content) as MarketplaceItem[];
+}
+
+/** Fetches one file's raw bytes via the Contents API. */
+export async function getFileBytes(path: string): Promise<Uint8Array> {
+  const { owner, name, branch } = githubConfig();
+  const { status, body } = await ghRaw(`/repos/${owner}/${name}/contents/${encodePath(path)}?ref=${branch}`);
+  if (status !== 200) {
+    throw new GithubApiError(status, `GitHub API file fetch failed for ${path}: ${status}`);
+  }
+  return new Uint8Array(Buffer.from((body as { content: string }).content, "base64"));
+}
+
+export interface TreeEntry {
+  path: string;
+  size: number;
+}
+
+/** Lists every blob path under a prefix via one recursive git-tree call. */
+export async function listTreePaths(prefix: string): Promise<TreeEntry[]> {
+  const { owner, name, branch } = githubConfig();
+  const base = `/repos/${owner}/${name}`;
+  const ref = await gh(`${base}/git/ref/heads/${branch}`);
+  const tree = await gh(`${base}/git/trees/${ref.object.sha}?recursive=1`);
+  return (tree.tree as Array<{ path: string; type: string; size?: number }>)
+    .filter((entry) => entry.type === "blob" && entry.path.startsWith(prefix))
+    .map((entry) => ({ path: entry.path, size: entry.size || 0 }));
 }
 
 export interface CommitFile {
   path: string;
-  content: Uint8Array | string;
+  /** null deletes this path from the tree. */
+  content: Uint8Array | string | null;
 }
 
 /**
- * Commits multiple files in one atomic commit via the Git Data API
- * (blob -> tree -> commit -> ref update), so an upload with several
- * extracted files lands as a single commit rather than one per file.
+ * Commits multiple file changes in one atomic commit via the Git Data API
+ * (blob -> tree -> commit -> ref update). A file with `content: null` is
+ * removed from the tree (GitHub's documented way to delete a path when
+ * building a tree from a base_tree).
  */
 export async function commitFiles(
   message: string,
@@ -53,23 +126,24 @@ export async function commitFiles(
   const baseCommit = await gh(`${base}/git/commits/${baseCommitSha}`);
   const baseTreeSha = baseCommit.tree.sha;
 
-  const blobs = await Promise.all(
+  const treeEntries = await Promise.all(
     files.map(async (file) => {
-      const content = typeof file.content === "string" ? Buffer.from(file.content, "utf-8") : Buffer.from(file.content);
+      if (file.content === null) {
+        return { path: file.path, mode: "100644", type: "blob", sha: null };
+      }
+      const content =
+        typeof file.content === "string" ? Buffer.from(file.content, "utf-8") : Buffer.from(file.content);
       const blob = await gh(`${base}/git/blobs`, {
         method: "POST",
         body: JSON.stringify({ content: content.toString("base64"), encoding: "base64" }),
       });
-      return { path: file.path, sha: blob.sha };
+      return { path: file.path, mode: "100644", type: "blob", sha: blob.sha };
     })
   );
 
   const tree = await gh(`${base}/git/trees`, {
     method: "POST",
-    body: JSON.stringify({
-      base_tree: baseTreeSha,
-      tree: blobs.map((b) => ({ path: b.path, mode: "100644", type: "blob", sha: b.sha })),
-    }),
+    body: JSON.stringify({ base_tree: baseTreeSha, tree: treeEntries }),
   });
 
   const commit = await gh(`${base}/git/commits`, {

@@ -6,17 +6,17 @@ export async function GET(_req: NextRequest, { params }: { params: { category: s
   if (!isCategoryId(params.category)) {
     return NextResponse.json({ error: "Unknown category" }, { status: 404 });
   }
-  if (!readItem(params.category, params.id)) {
+  if (!(await readItem(params.category, params.id))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  return NextResponse.json(listItemFiles(params.category, params.id));
+  return NextResponse.json(await listItemFiles(params.category, params.id));
 }
 
 export async function POST(req: NextRequest, { params }: { params: { category: string; id: string } }) {
   if (!isCategoryId(params.category)) {
     return NextResponse.json({ error: "Unknown category" }, { status: 404 });
   }
-  if (!readItem(params.category, params.id)) {
+  if (!(await readItem(params.category, params.id))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest, { params }: { params: { category: s
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  saveItemFile(params.category, params.id, file.name, buffer);
+  await saveItemFile(params.category, params.id, file.name, buffer);
 
-  return NextResponse.json(listItemFiles(params.category, params.id), { status: 201 });
+  return NextResponse.json(await listItemFiles(params.category, params.id), { status: 201 });
 }

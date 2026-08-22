@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isCategoryId } from "@/lib/categories";
 import { extractZipArchive } from "@/lib/archive";
-import { commitFiles } from "@/lib/github";
-import { isSafeArchivePath, readItem, slugify } from "@/lib/items";
-import { CategoryId, MarketplaceItem, RydrCategory, isThemeCategory } from "@/lib/types";
+import { createItem, isSafeArchivePath } from "@/lib/items";
+import { CategoryId, ItemInput, RydrCategory, isThemeCategory } from "@/lib/types";
 
 interface ExtractedFile {
   name: string;
@@ -96,21 +95,13 @@ export async function POST(req: NextRequest, { params }: { params: { category: s
     );
   }
 
-  const id = slugify(name);
-  if (!id) {
-    return NextResponse.json({ error: "Name must contain at least one letter or number." }, { status: 400 });
-  }
-  if (readItem(category, id)) {
-    return NextResponse.json({ error: `An item with id "${id}" already exists in ${category}.` }, { status: 409 });
-  }
-
   // Metadata files describe the item — they aren't part of the shipped
   // package, so they don't get copied into files/.
   const packageFiles = extracted.filter((f) => !isMetadataFile(f.name) && isSafeArchivePath(f.name));
   const names = packageFiles.map((f) => f.name);
 
   const entryFile = isThemeCategory(category)
-    ? field("entryFile") || names[0] || `${id}.json`
+    ? field("entryFile") || names[0] || "theme.json"
     : pickEntryFile(names, field("entryFile") || undefined);
 
   let colors: Record<string, string> | undefined;
@@ -127,34 +118,13 @@ export async function POST(req: NextRequest, { params }: { params: { category: s
     }
   }
 
-  const now = new Date().toISOString();
-  const item: MarketplaceItem = {
-    id,
-    category,
-    name,
-    description,
-    author,
-    version,
-    icon,
-    repo,
-    entryFile,
-    rydrCategory,
-    colors,
-    createdAt: now,
-    updatedAt: now,
-    downloads: 0,
-    tags,
-  };
-
-  const commitPayload = [
-    { path: `data/${category}/${id}/manifest.json`, content: JSON.stringify(item, null, 2) + "\n" },
-    ...packageFiles.map((f) => ({ path: `data/${category}/${id}/files/${f.name}`, content: f.data })),
-  ];
+  const input: ItemInput = { name, description, author, version, icon, repo, entryFile, rydrCategory, colors, tags };
+  const extraFiles = packageFiles.map((f) => ({ relativePath: `files/${f.name}`, content: f.data }));
 
   try {
-    const result = await commitFiles(`Add ${name} to ${category} via marketplace upload`, commitPayload);
-    return NextResponse.json({ item, commit: result }, { status: 201 });
+    const item = await createItem(category, input, extraFiles);
+    return NextResponse.json(item, { status: 201 });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return NextResponse.json({ error: (err as Error).message }, { status: 400 });
   }
 }

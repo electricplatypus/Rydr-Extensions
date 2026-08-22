@@ -6,7 +6,7 @@ import { CategoryNav } from "@/components/CategoryNav";
 import { ItemCard } from "@/components/ItemCard";
 import { SortControls } from "@/components/SortControls";
 
-export default function CategoryPage({
+export default async function CategoryPage({
   params,
   searchParams,
 }: {
@@ -18,7 +18,7 @@ export default function CategoryPage({
 
   const sort = (searchParams.sort as SortField) || "date";
   const dir = (searchParams.dir as SortDir) || "desc";
-  const items = listItems(category.id, sort, dir);
+  const items = await listItems(category.id, sort, dir);
 
   return (
     <div>

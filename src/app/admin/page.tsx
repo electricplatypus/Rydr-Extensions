@@ -3,7 +3,9 @@ import { CATEGORIES } from "@/lib/categories";
 import { listItems } from "@/lib/items";
 import { DeleteItemButton } from "@/components/DeleteItemButton";
 
-export default function AdminPage() {
+export default async function AdminPage() {
+  const itemsByCategory = await Promise.all(CATEGORIES.map((category) => listItems(category.id, "date", "desc")));
+
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
@@ -14,8 +16,8 @@ export default function AdminPage() {
       </div>
       <p className="text-[var(--text-muted)] mb-8">Add, edit, or remove marketplace items in each category.</p>
 
-      {CATEGORIES.map((category) => {
-        const items = listItems(category.id, "date", "desc");
+      {CATEGORIES.map((category, i) => {
+        const items = itemsByCategory[i];
         return (
           <div key={category.id} className="mb-10">
             <div className="flex items-center justify-between mb-3">

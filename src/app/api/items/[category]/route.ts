@@ -10,7 +10,7 @@ export async function GET(req: NextRequest, { params }: { params: { category: st
   const { searchParams } = new URL(req.url);
   const sort = (searchParams.get("sort") as SortField) || "date";
   const dir = (searchParams.get("dir") as SortDir) || "desc";
-  return NextResponse.json(listItems(params.category, sort, dir));
+  return NextResponse.json(await listItems(params.category, sort, dir));
 }
 
 export async function POST(req: NextRequest, { params }: { params: { category: string } }) {
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest, { params }: { params: { category: s
     return NextResponse.json({ error: "name, description, author, and version are required" }, { status: 400 });
   }
   try {
-    const item = createItem(params.category, body);
+    const item = await createItem(params.category, body);
     return NextResponse.json(item, { status: 201 });
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 400 });

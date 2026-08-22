@@ -1,20 +1,5 @@
-import fs from "fs";
-import path from "path";
 import { CategoryId, ItemInput, MarketplaceItem, SortDir, SortField } from "./types";
-
-const DATA_ROOT = path.join(process.cwd(), "data");
-
-function categoryDir(category: CategoryId): string {
-  return path.join(DATA_ROOT, category);
-}
-
-function itemDir(category: CategoryId, id: string): string {
-  return path.join(categoryDir(category), id);
-}
-
-function manifestPath(category: CategoryId, id: string): string {
-  return path.join(itemDir(category, id), "manifest.json");
-}
+import { commitFiles, getIndex, listTreePaths, withRetry } from "./github";
 
 export function slugify(name: string): string {
   return name
@@ -24,123 +9,158 @@ export function slugify(name: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-export function listItems(
+function manifestPath(category: CategoryId, id: string): string {
+  return `data/${category}/${id}/manifest.json`;
+}
+
+export function filesPrefix(category: CategoryId, id: string): string {
+  return `data/${category}/${id}/files/`;
+}
+
+export async function listAllItems(): Promise<MarketplaceItem[]> {
+  return getIndex();
+}
+
+export async function listItems(
   category: CategoryId,
   sort: SortField = "date",
   dir: SortDir = "desc"
-): MarketplaceItem[] {
-  const dirPath = categoryDir(category);
-  if (!fs.existsSync(dirPath)) return [];
+): Promise<MarketplaceItem[]> {
+  const items = (await getIndex()).filter((item) => item.category === category);
 
-  const items = fs
-    .readdirSync(dirPath, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => readItem(category, entry.name))
-    .filter((item): item is MarketplaceItem => item !== null);
-
-  const sorted = items.sort((a, b) => {
+  return items.sort((a, b) => {
     let cmp = 0;
     if (sort === "date") cmp = a.createdAt.localeCompare(b.createdAt);
     else if (sort === "name") cmp = a.name.localeCompare(b.name);
     else if (sort === "downloads") cmp = a.downloads - b.downloads;
     return dir === "asc" ? cmp : -cmp;
   });
-
-  return sorted;
 }
 
-export function listAllItems(): MarketplaceItem[] {
-  if (!fs.existsSync(DATA_ROOT)) return [];
-  return fs
-    .readdirSync(DATA_ROOT, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .flatMap((entry) => listItems(entry.name as CategoryId));
+export async function readItem(category: CategoryId, id: string): Promise<MarketplaceItem | null> {
+  const items = await getIndex();
+  return items.find((item) => item.category === category && item.id === id) || null;
 }
 
-export function readItem(category: CategoryId, id: string): MarketplaceItem | null {
-  const file = manifestPath(category, id);
-  if (!fs.existsSync(file)) return null;
-  try {
-    const raw = fs.readFileSync(file, "utf-8");
-    return JSON.parse(raw) as MarketplaceItem;
-  } catch {
-    return null;
-  }
+export interface ExtraItemFile {
+  /** Path relative to data/<category>/<id>/, e.g. "files/my-plugin.js". */
+  relativePath: string;
+  content: Uint8Array | string;
 }
 
-export function createItem(category: CategoryId, input: ItemInput): MarketplaceItem {
+/**
+ * Creates an item, committing the index + manifest.json in one atomic
+ * commit. Pass `extraFiles` (e.g. from an extracted zip upload) to land the
+ * package's files in that same commit rather than a separate one.
+ */
+export async function createItem(
+  category: CategoryId,
+  input: ItemInput,
+  extraFiles: ExtraItemFile[] = []
+): Promise<MarketplaceItem> {
   const id = slugify(input.name);
   if (!id) throw new Error("Item name must contain at least one letter or number.");
-  if (readItem(category, id)) throw new Error(`An item with id "${id}" already exists in ${category}.`);
 
-  const now = new Date().toISOString();
-  const item: MarketplaceItem = {
-    id,
-    category,
-    name: input.name,
-    description: input.description,
-    author: input.author,
-    version: input.version,
-    icon: input.icon,
-    repo: input.repo,
-    entryFile: input.entryFile,
-    rydrCategory: input.rydrCategory,
-    colors: input.colors,
-    createdAt: now,
-    updatedAt: now,
-    downloads: 0,
-    tags: input.tags,
-  };
+  return withRetry(async () => {
+    const index = await getIndex();
+    if (index.some((item) => item.category === category && item.id === id)) {
+      throw new Error(`An item with id "${id}" already exists in ${category}.`);
+    }
 
-  const dir = itemDir(category, id);
-  fs.mkdirSync(path.join(dir, "files"), { recursive: true });
-  fs.writeFileSync(manifestPath(category, id), JSON.stringify(item, null, 2) + "\n");
-  return item;
+    const now = new Date().toISOString();
+    const item: MarketplaceItem = {
+      id,
+      category,
+      name: input.name,
+      description: input.description,
+      author: input.author,
+      version: input.version,
+      icon: input.icon,
+      repo: input.repo,
+      entryFile: input.entryFile,
+      rydrCategory: input.rydrCategory,
+      colors: input.colors,
+      createdAt: now,
+      updatedAt: now,
+      downloads: 0,
+      tags: input.tags,
+    };
+
+    const nextIndex = [...index, item];
+    await commitFiles(`Add ${item.name} to ${category}`, [
+      { path: "data/index.json", content: JSON.stringify(nextIndex, null, 2) + "\n" },
+      { path: manifestPath(category, id), content: JSON.stringify(item, null, 2) + "\n" },
+      ...extraFiles.map((f) => ({ path: `data/${category}/${id}/${f.relativePath}`, content: f.content })),
+    ]);
+    return item;
+  });
 }
 
-export function updateItem(
-  category: CategoryId,
-  id: string,
-  input: ItemInput
-): MarketplaceItem {
-  const existing = readItem(category, id);
-  if (!existing) throw new Error(`Item "${id}" not found in ${category}.`);
+export async function updateItem(category: CategoryId, id: string, input: ItemInput): Promise<MarketplaceItem> {
+  return withRetry(async () => {
+    const index = await getIndex();
+    const idx = index.findIndex((item) => item.category === category && item.id === id);
+    if (idx === -1) throw new Error(`Item "${id}" not found in ${category}.`);
 
-  const updated: MarketplaceItem = {
-    ...existing,
-    name: input.name,
-    description: input.description,
-    author: input.author,
-    version: input.version,
-    icon: input.icon,
-    repo: input.repo,
-    entryFile: input.entryFile,
-    rydrCategory: input.rydrCategory,
-    colors: input.colors,
-    tags: input.tags,
-    updatedAt: new Date().toISOString(),
-  };
+    const updated: MarketplaceItem = {
+      ...index[idx],
+      name: input.name,
+      description: input.description,
+      author: input.author,
+      version: input.version,
+      icon: input.icon,
+      repo: input.repo,
+      entryFile: input.entryFile,
+      rydrCategory: input.rydrCategory,
+      colors: input.colors,
+      tags: input.tags,
+      updatedAt: new Date().toISOString(),
+    };
 
-  fs.writeFileSync(manifestPath(category, id), JSON.stringify(updated, null, 2) + "\n");
-  return updated;
+    const nextIndex = [...index];
+    nextIndex[idx] = updated;
+
+    await commitFiles(`Update ${updated.name} in ${category}`, [
+      { path: "data/index.json", content: JSON.stringify(nextIndex, null, 2) + "\n" },
+      { path: manifestPath(category, id), content: JSON.stringify(updated, null, 2) + "\n" },
+    ]);
+    return updated;
+  });
 }
 
-export function deleteItem(category: CategoryId, id: string): void {
-  const dir = itemDir(category, id);
-  if (!fs.existsSync(dir)) throw new Error(`Item "${id}" not found in ${category}.`);
-  fs.rmSync(dir, { recursive: true, force: true });
+export async function deleteItem(category: CategoryId, id: string): Promise<void> {
+  return withRetry(async () => {
+    const index = await getIndex();
+    if (!index.some((item) => item.category === category && item.id === id)) {
+      throw new Error(`Item "${id}" not found in ${category}.`);
+    }
+
+    const nextIndex = index.filter((item) => !(item.category === category && item.id === id));
+    const paths = await listTreePaths(`data/${category}/${id}/`);
+
+    await commitFiles(`Remove ${id} from ${category}`, [
+      { path: "data/index.json", content: JSON.stringify(nextIndex, null, 2) + "\n" },
+      ...paths.map((p) => ({ path: p.path, content: null })),
+    ]);
+  });
 }
 
-export function incrementDownloads(category: CategoryId, id: string): MarketplaceItem | null {
-  const existing = readItem(category, id);
-  if (!existing) return null;
-  const updated = { ...existing, downloads: existing.downloads + 1 };
-  fs.writeFileSync(manifestPath(category, id), JSON.stringify(updated, null, 2) + "\n");
-  return updated;
-}
+export async function incrementDownloads(category: CategoryId, id: string): Promise<MarketplaceItem | null> {
+  return withRetry(async () => {
+    const index = await getIndex();
+    const idx = index.findIndex((item) => item.category === category && item.id === id);
+    if (idx === -1) return null;
 
-export function itemFilesDir(category: CategoryId, id: string): string {
-  return path.join(itemDir(category, id), "files");
+    const updated = { ...index[idx], downloads: index[idx].downloads + 1 };
+    const nextIndex = [...index];
+    nextIndex[idx] = updated;
+
+    await commitFiles(`Increment downloads for ${id}`, [
+      { path: "data/index.json", content: JSON.stringify(nextIndex, null, 2) + "\n" },
+      { path: manifestPath(category, id), content: JSON.stringify(updated, null, 2) + "\n" },
+    ]);
+    return updated;
+  });
 }
 
 export interface ItemFileInfo {
@@ -148,16 +168,10 @@ export interface ItemFileInfo {
   size: number;
 }
 
-export function listItemFiles(category: CategoryId, id: string): ItemFileInfo[] {
-  const dir = itemFilesDir(category, id);
-  if (!fs.existsSync(dir)) return [];
-  return fs
-    .readdirSync(dir, { withFileTypes: true })
-    .filter((entry) => entry.isFile())
-    .map((entry) => ({
-      name: entry.name,
-      size: fs.statSync(path.join(dir, entry.name)).size,
-    }));
+export async function listItemFiles(category: CategoryId, id: string): Promise<ItemFileInfo[]> {
+  const prefix = filesPrefix(category, id);
+  const paths = await listTreePaths(prefix);
+  return paths.map((p) => ({ name: p.path.slice(prefix.length), size: p.size }));
 }
 
 const SAFE_FILENAME = /^[a-zA-Z0-9._-]+$/;
@@ -171,20 +185,19 @@ export function isSafeFilename(name: string): boolean {
 // segment that doesn't match the same safe character set.
 export function isSafeArchivePath(archivePath: string): boolean {
   if (!archivePath || archivePath.startsWith("/") || archivePath.includes("..")) return false;
-  const segments = archivePath.split("/");
-  return segments.every((segment) => isSafeFilename(segment));
+  return archivePath.split("/").every((segment) => isSafeFilename(segment));
 }
 
-export function saveItemFile(category: CategoryId, id: string, filename: string, data: Buffer): void {
+export async function saveItemFile(category: CategoryId, id: string, filename: string, data: Buffer): Promise<void> {
   if (!isSafeFilename(filename)) throw new Error("Invalid filename.");
-  const dir = itemFilesDir(category, id);
-  fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, filename), data);
+  await commitFiles(`Add ${filename} to ${category}/${id}`, [
+    { path: `${filesPrefix(category, id)}${filename}`, content: new Uint8Array(data) },
+  ]);
 }
 
-export function deleteItemFile(category: CategoryId, id: string, filename: string): void {
+export async function deleteItemFile(category: CategoryId, id: string, filename: string): Promise<void> {
   if (!isSafeFilename(filename)) throw new Error("Invalid filename.");
-  const filePath = path.join(itemFilesDir(category, id), filename);
-  if (!fs.existsSync(filePath)) throw new Error("File not found.");
-  fs.rmSync(filePath);
+  await commitFiles(`Remove ${filename} from ${category}/${id}`, [
+    { path: `${filesPrefix(category, id)}${filename}`, content: null },
+  ]);
 }

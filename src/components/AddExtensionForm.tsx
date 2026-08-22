@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Category, CategoryId, RydrCategory, isThemeCategory } from "@/lib/types";
 
@@ -19,7 +20,7 @@ export function AddExtensionForm({ categories }: { categories: Category[] }) {
   const [entryFile, setEntryFile] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [commitUrl, setCommitUrl] = useState<string | null>(null);
+  const [published, setPublished] = useState<{ category: CategoryId; id: string } | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,7 +30,7 @@ export function AddExtensionForm({ categories }: { categories: Category[] }) {
     }
     setSubmitting(true);
     setError(null);
-    setCommitUrl(null);
+    setPublished(null);
 
     const body = new FormData();
     body.append("file", file);
@@ -52,7 +53,7 @@ export function AddExtensionForm({ categories }: { categories: Category[] }) {
       return;
     }
 
-    setCommitUrl(data.commit?.commitUrl || null);
+    setPublished({ category, id: data.id });
     setSubmitting(false);
     setFile(null);
     setName("");
@@ -62,13 +63,13 @@ export function AddExtensionForm({ categories }: { categories: Category[] }) {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4 max-w-xl">
       {error && <div className="text-sm text-red-400">{error}</div>}
-      {commitUrl !== null && (
+      {published && (
         <div className="text-sm text-green-400">
-          Committed to GitHub —{" "}
-          <a className="underline" href={commitUrl} target="_blank" rel="noreferrer">
-            view commit
-          </a>
-          . It will appear in the marketplace once the next deployment finishes.
+          Published —{" "}
+          <Link className="underline" href={`/${published.category}/${published.id}`}>
+            view it in the marketplace
+          </Link>
+          .
         </div>
       )}
 

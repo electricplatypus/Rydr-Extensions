@@ -7,10 +7,10 @@ import { entryRawUrl } from "@/lib/rydrManifest";
 import { isThemeCategory } from "@/lib/types";
 import { InstallButton } from "@/components/InstallButton";
 
-export default function ItemDetailPage({ params }: { params: { category: string; id: string } }) {
+export default async function ItemDetailPage({ params }: { params: { category: string; id: string } }) {
   if (!isCategoryId(params.category)) notFound();
   const category = getCategory(params.category)!;
-  const item = readItem(category.id, params.id);
+  const item = await readItem(category.id, params.id);
   if (!item) notFound();
 
   const host = headers().get("host");

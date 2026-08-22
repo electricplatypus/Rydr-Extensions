@@ -4,12 +4,12 @@ import { listItemFiles, readItem } from "@/lib/items";
 import { ItemForm } from "@/components/ItemForm";
 import { FileManager } from "@/components/FileManager";
 
-export default function EditItemPage({ params }: { params: { category: string; id: string } }) {
+export default async function EditItemPage({ params }: { params: { category: string; id: string } }) {
   if (!isCategoryId(params.category)) notFound();
   const category = getCategory(params.category)!;
-  const item = readItem(category.id, params.id);
+  const item = await readItem(category.id, params.id);
   if (!item) notFound();
-  const files = listItemFiles(category.id, params.id);
+  const files = await listItemFiles(category.id, params.id);
 
   return (
     <div>

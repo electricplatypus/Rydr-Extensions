@@ -7,11 +7,11 @@ export async function GET(_req: NextRequest, { params }: { params: { category: s
   if (!isCategoryId(params.category)) {
     return NextResponse.json({ error: "Unknown category" }, { status: 404 });
   }
-  const item = readItem(params.category, params.id);
+  const item = await readItem(params.category, params.id);
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const zip = await bundleItemFiles(params.category, params.id);
-  incrementDownloads(params.category, params.id);
+  await incrementDownloads(params.category, params.id);
 
   return new NextResponse(new Uint8Array(zip), {
     headers: {

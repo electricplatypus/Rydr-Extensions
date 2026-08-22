@@ -41,8 +41,8 @@ export function toRydrPluginEntry(item: MarketplaceItem): RydrPluginManifestEntr
  * extended with `themes`/`trackHudThemes` color-data arrays for the two
  * categories that have no JS entry file to run.
  */
-export function buildRydrManifest() {
-  const items = listAllItems();
+export async function buildRydrManifest() {
+  const items = await listAllItems();
 
   const plugins = items
     .filter((item) => item.category !== "app-themes" && item.category !== "trackhud-themes")

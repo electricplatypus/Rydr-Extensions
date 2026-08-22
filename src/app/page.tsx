@@ -3,8 +3,8 @@ import { CATEGORIES } from "@/lib/categories";
 import { listAllItems } from "@/lib/items";
 import { ItemCard } from "@/components/ItemCard";
 
-export default function HomePage() {
-  const recent = listAllItems()
+export default async function HomePage() {
+  const recent = (await listAllItems())
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 6);
 

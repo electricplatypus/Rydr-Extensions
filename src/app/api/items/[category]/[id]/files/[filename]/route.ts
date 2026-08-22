@@ -10,8 +10,8 @@ export async function DELETE(
     return NextResponse.json({ error: "Unknown category" }, { status: 404 });
   }
   try {
-    deleteItemFile(params.category, params.id, decodeURIComponent(params.filename));
-    return NextResponse.json(listItemFiles(params.category, params.id));
+    await deleteItemFile(params.category, params.id, decodeURIComponent(params.filename));
+    return NextResponse.json(await listItemFiles(params.category, params.id));
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 400 });
   }

@@ -1,20 +1,18 @@
-import fs from "fs";
-import path from "path";
 import { ZipReader, ZipWriter, Uint8ArrayReader, Uint8ArrayWriter } from "@zip.js/zip.js";
 import { CategoryId } from "./types";
-import { itemFilesDir } from "./items";
+import { filesPrefix, listItemFiles } from "./items";
+import { getFileBytes } from "./github";
 
 export async function bundleItemFiles(category: CategoryId, id: string): Promise<Uint8Array> {
-  const dir = itemFilesDir(category, id);
   const zipWriter = new ZipWriter(new Uint8ArrayWriter());
-  if (fs.existsSync(dir)) {
-    for (const name of fs.readdirSync(dir)) {
-      const filePath = path.join(dir, name);
-      if (fs.statSync(filePath).isFile()) {
-        await zipWriter.add(name, new Uint8ArrayReader(new Uint8Array(fs.readFileSync(filePath))));
-      }
-    }
+  const files = await listItemFiles(category, id);
+  const prefix = filesPrefix(category, id);
+
+  for (const file of files) {
+    const data = await getFileBytes(`${prefix}${file.name}`);
+    await zipWriter.add(file.name, new Uint8ArrayReader(data));
   }
+
   return zipWriter.close();
 }
 

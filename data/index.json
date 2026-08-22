@@ -1,0 +1,325 @@
+[
+  {
+    "id": "arctic-frost",
+    "category": "app-themes",
+    "name": "Arctic Frost",
+    "description": "A crisp light dashboard theme with icy blue accents, tuned for bright daylight riding.",
+    "author": "rydr-extensions",
+    "version": "1.0.0",
+    "icon": "🩵",
+    "repo": "github.com/electricplatypus/rydr-extensions",
+    "entryFile": "arctic-frost.json",
+    "rydrCategory": "theme",
+    "colors": {
+      "bg": "#eef3f8",
+      "panel": "#ffffff",
+      "primary": "#2f8fd6",
+      "secondary": "#5b6b7c",
+      "text": "#151c26"
+    },
+    "createdAt": "2026-08-01T12:00:00.000Z",
+    "updatedAt": "2026-08-01T12:00:00.000Z",
+    "downloads": 29,
+    "tags": [
+      "theme",
+      "light",
+      "cool"
+    ]
+  },
+  {
+    "id": "midnight-copper",
+    "category": "app-themes",
+    "name": "Midnight Copper",
+    "description": "A deep charcoal dashboard theme with warm copper accents — self-applying (see note on the item page about Rydr's theme-install hook).",
+    "author": "rydr-extensions",
+    "version": "1.0.0",
+    "icon": "🟠",
+    "repo": "github.com/electricplatypus/rydr-extensions",
+    "entryFile": "midnight-copper.json",
+    "rydrCategory": "theme",
+    "colors": {
+      "bg": "#14100d",
+      "panel": "#1e1712",
+      "primary": "#c9772f",
+      "secondary": "#a68f7a",
+      "text": "#f5ece2"
+    },
+    "createdAt": "2026-07-15T12:00:00.000Z",
+    "updatedAt": "2026-07-15T12:00:00.000Z",
+    "downloads": 63,
+    "tags": [
+      "theme",
+      "dark",
+      "warm"
+    ]
+  },
+  {
+    "id": "apex-drag",
+    "category": "plugins",
+    "name": "Apex Drag & Launch Telemetry",
+    "description": "High-performance drag timing for 1/4 mi, 1/2 mi, 1 mi & 0-60 runs with auto launch trigger, run history logs, and social share graphics.",
+    "author": "electricplatypus",
+    "version": "1.0.0",
+    "icon": "🏁",
+    "repo": "github.com/electricplatypus/rydr",
+    "entryFile": "apex-drag.js",
+    "rydrCategory": "performance",
+    "createdAt": "2026-06-05T13:00:00.000Z",
+    "updatedAt": "2026-06-05T13:00:00.000Z",
+    "downloads": 189,
+    "tags": [
+      "performance",
+      "drag-timing",
+      "standalone"
+    ]
+  },
+  {
+    "id": "chase-cam-3d",
+    "category": "plugins",
+    "name": "3D Chase Cam",
+    "description": "A live MapLibre + 3D bike chase camera that follows your real GPS position on a tilted dark map with a glowing orange trail.",
+    "author": "electricplatypus",
+    "version": "1.0.0",
+    "icon": "🎥",
+    "repo": "github.com/electricplatypus/rydr",
+    "entryFile": "chase-cam-3d.js",
+    "rydrCategory": "navigation",
+    "createdAt": "2026-06-22T16:30:00.000Z",
+    "updatedAt": "2026-06-22T16:30:00.000Z",
+    "downloads": 97,
+    "tags": [
+      "map",
+      "3d",
+      "navigation",
+      "standalone"
+    ]
+  },
+  {
+    "id": "hourly-precip",
+    "category": "plugins",
+    "name": "Hourly Precipitation",
+    "description": "An animated hourly chance-of-rain forecast with a soft weather-condition background — sun, rain, and clouds swept across the same hours the chart shows.",
+    "author": "electricplatypus",
+    "version": "1.0.0",
+    "icon": "☔",
+    "repo": "github.com/electricplatypus/rydr",
+    "entryFile": "hourly-precip.js",
+    "rydrCategory": "weather",
+    "createdAt": "2026-07-10T08:45:00.000Z",
+    "updatedAt": "2026-07-10T08:45:00.000Z",
+    "downloads": 143,
+    "tags": [
+      "weather",
+      "forecast",
+      "standalone"
+    ]
+  },
+  {
+    "id": "ridepulse",
+    "category": "plugins",
+    "name": "Ride Pulse",
+    "description": "A motorcycle instrument cluster for speed, lean, and heading, plus an all-time logbook across every saved ride.",
+    "author": "electricplatypus",
+    "version": "2.0.0",
+    "icon": "⚡",
+    "repo": "github.com/electricplatypus/Workspace",
+    "entryFile": "ridepulse.js",
+    "rydrCategory": "display",
+    "createdAt": "2026-05-02T10:00:00.000Z",
+    "updatedAt": "2026-06-18T14:20:00.000Z",
+    "downloads": 414,
+    "tags": [
+      "dashboard",
+      "telemetry",
+      "built-in"
+    ]
+  },
+  {
+    "id": "spotify-playlists",
+    "category": "plugins",
+    "name": "Spotify Playlists",
+    "description": "Browse your Spotify playlists as a list or a thumbnail grid, with sort and quick-play.",
+    "author": "electricplatypus",
+    "version": "1.2.0",
+    "icon": "🎵",
+    "repo": "github.com/electricplatypus/rydr",
+    "entryFile": "spotify-playlists.js",
+    "rydrCategory": "media",
+    "createdAt": "2026-05-20T09:15:00.000Z",
+    "updatedAt": "2026-07-01T11:40:00.000Z",
+    "downloads": 268,
+    "tags": [
+      "music",
+      "spotify",
+      "standalone"
+    ]
+  },
+  {
+    "id": "lap-timer-widget",
+    "category": "screensavers",
+    "name": "Lap Timer",
+    "description": "A flat OLED-friendly screensaver widget showing the current ride duration as a lap clock.",
+    "author": "rydr-extensions",
+    "version": "1.0.0",
+    "icon": "⏱️",
+    "repo": "github.com/electricplatypus/rydr-extensions",
+    "entryFile": "lap-timer-widget.js",
+    "rydrCategory": "display",
+    "createdAt": "2026-07-22T15:00:00.000Z",
+    "updatedAt": "2026-07-22T15:00:00.000Z",
+    "downloads": 12,
+    "tags": [
+      "screensaver",
+      "timer"
+    ]
+  },
+  {
+    "id": "screensaver-example",
+    "category": "screensavers",
+    "name": "Screensaver Example",
+    "description": "Shows how a plugin can add a compact widget to the screensaver as well as a dashboard card.",
+    "author": "electricplatypus",
+    "version": "1.0.0",
+    "icon": "🖥️",
+    "repo": "github.com/electricplatypus/rydr",
+    "entryFile": "screensaver-example.js",
+    "rydrCategory": "display",
+    "createdAt": "2026-04-10T09:00:00.000Z",
+    "updatedAt": "2026-04-10T09:00:00.000Z",
+    "downloads": 38,
+    "tags": [
+      "reference",
+      "screensaver"
+    ]
+  },
+  {
+    "id": "demo-plugin",
+    "category": "tools-utilities",
+    "name": "Demo Plugin",
+    "description": "A reference plugin for testing the RydR plugin manager — a minimal dashboard card plus a matching screensaver widget.",
+    "author": "electricplatypus",
+    "version": "1.0.0",
+    "icon": "🧪",
+    "repo": "github.com/electricplatypus/rydr",
+    "entryFile": "demo-plugin.js",
+    "rydrCategory": "tool",
+    "createdAt": "2026-04-18T12:00:00.000Z",
+    "updatedAt": "2026-04-18T12:00:00.000Z",
+    "downloads": 54,
+    "tags": [
+      "reference",
+      "developer"
+    ]
+  },
+  {
+    "id": "unit-converter",
+    "category": "tools-utilities",
+    "name": "Unit Converter",
+    "description": "A quick speed/distance/volume unit converter dashboard card for imperial/metric riders.",
+    "author": "rydr-extensions",
+    "version": "1.0.0",
+    "icon": "🔁",
+    "repo": "github.com/electricplatypus/rydr-extensions",
+    "entryFile": "unit-converter.js",
+    "rydrCategory": "tool",
+    "createdAt": "2026-08-10T11:00:00.000Z",
+    "updatedAt": "2026-08-10T11:00:00.000Z",
+    "downloads": 4,
+    "tags": [
+      "utility",
+      "units",
+      "converter"
+    ]
+  },
+  {
+    "id": "circuit-red",
+    "category": "trackhud-themes",
+    "name": "Circuit Red",
+    "description": "A racing-red Track HUD palette for gauges and the telemetry brand bar — pairs the HUD's dark shell with a hot-red accent.",
+    "author": "rydr-extensions",
+    "version": "1.0.0",
+    "icon": "🔴",
+    "repo": "github.com/electricplatypus/rydr-extensions",
+    "entryFile": "circuit-red.json",
+    "rydrCategory": "theme",
+    "colors": {
+      "hud-bg": "#120607",
+      "hud-text": "#ffffff",
+      "hud-accent": "#e61f2c",
+      "hud-gauge": "#8a3037"
+    },
+    "createdAt": "2026-07-30T14:00:00.000Z",
+    "updatedAt": "2026-07-30T14:00:00.000Z",
+    "downloads": 18,
+    "tags": [
+      "trackhud",
+      "theme",
+      "racing"
+    ]
+  },
+  {
+    "id": "endurance-green",
+    "category": "trackhud-themes",
+    "name": "Endurance Green",
+    "description": "A low-glare, dark-green Track HUD palette designed for long endurance stints and reduced eye strain at night.",
+    "author": "rydr-extensions",
+    "version": "1.0.0",
+    "icon": "🟢",
+    "repo": "github.com/electricplatypus/rydr-extensions",
+    "entryFile": "endurance-green.json",
+    "rydrCategory": "theme",
+    "colors": {
+      "hud-bg": "#06110a",
+      "hud-text": "#e9fff2",
+      "hud-accent": "#22c55e",
+      "hud-gauge": "#2f6b4a"
+    },
+    "createdAt": "2026-08-15T14:00:00.000Z",
+    "updatedAt": "2026-08-15T14:00:00.000Z",
+    "downloads": 5,
+    "tags": [
+      "trackhud",
+      "theme",
+      "endurance"
+    ]
+  },
+  {
+    "id": "fuel-log",
+    "category": "view-extensions",
+    "name": "Fuel Log",
+    "description": "Log fill-ups (gallons + cost) and browse fuel history in its own full-screen view, added to the sidebar menu.",
+    "author": "rydr-extensions",
+    "version": "1.0.0",
+    "icon": "⛽",
+    "repo": "github.com/electricplatypus/rydr-extensions",
+    "entryFile": "fuel-log.js",
+    "rydrCategory": "tool",
+    "createdAt": "2026-07-28T10:00:00.000Z",
+    "updatedAt": "2026-07-28T10:00:00.000Z",
+    "downloads": 21,
+    "tags": [
+      "view-extension",
+      "fuel",
+      "logbook"
+    ]
+  },
+  {
+    "id": "ride-journal",
+    "category": "view-extensions",
+    "name": "Ride Journal",
+    "description": "A freeform journal for jotting notes about a ride, in its own full-screen view with a sidebar entry.",
+    "author": "rydr-extensions",
+    "version": "1.0.0",
+    "icon": "📓",
+    "repo": "github.com/electricplatypus/rydr-extensions",
+    "entryFile": "ride-journal.js",
+    "rydrCategory": "tool",
+    "createdAt": "2026-08-02T09:30:00.000Z",
+    "updatedAt": "2026-08-02T09:30:00.000Z",
+    "downloads": 7,
+    "tags": [
+      "view-extension",
+      "journal"
+    ]
+  }
+]
