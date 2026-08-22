@@ -6,7 +6,12 @@ import { DeleteItemButton } from "@/components/DeleteItemButton";
 export default function AdminPage() {
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-1">Admin</h1>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="text-2xl font-bold">Admin</h1>
+        <Link href="/admin/upload" className="btn text-sm">
+          📦 Add Extension
+        </Link>
+      </div>
       <p className="text-[var(--text-muted)] mb-8">Add, edit, or remove marketplace items in each category.</p>
 
       {CATEGORIES.map((category) => {

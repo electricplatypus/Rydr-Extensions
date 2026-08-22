@@ -166,6 +166,15 @@ export function isSafeFilename(name: string): boolean {
   return SAFE_FILENAME.test(name) && name !== "." && name !== "..";
 }
 
+// Zip archives legitimately contain nested paths (assets/icon.png), unlike
+// the single-file upload above — allow "/" but reject traversal and any
+// segment that doesn't match the same safe character set.
+export function isSafeArchivePath(archivePath: string): boolean {
+  if (!archivePath || archivePath.startsWith("/") || archivePath.includes("..")) return false;
+  const segments = archivePath.split("/");
+  return segments.every((segment) => isSafeFilename(segment));
+}
+
 export function saveItemFile(category: CategoryId, id: string, filename: string, data: Buffer): void {
   if (!isSafeFilename(filename)) throw new Error("Invalid filename.");
   const dir = itemFilesDir(category, id);
