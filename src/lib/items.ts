@@ -1,5 +1,5 @@
 import { CategoryId, ItemInput, MarketplaceItem, SortDir, SortField } from "./types";
-import { commitFiles, getIndex, listTreePaths, withRetry } from "./github";
+import { commitFiles, getDownloadCounts, getIndex, listTreePaths, withRetry } from "./github";
 
 export function slugify(name: string): string {
   return name
@@ -145,21 +145,21 @@ export async function deleteItem(category: CategoryId, id: string): Promise<void
   });
 }
 
-export async function incrementDownloads(category: CategoryId, id: string): Promise<MarketplaceItem | null> {
+// Download counts live in their own data/downloads.json, deliberately
+// decoupled from data/index.json and each item's manifest.json — a
+// download shouldn't touch the same file a real edit does. vercel.json's
+// ignoreCommand skips a rebuild for a commit that only changes this file,
+// since counts are already read live via getIndex() on every request and
+// never needed a redeploy to show up.
+export async function incrementDownloads(category: CategoryId, id: string): Promise<void> {
   return withRetry(async () => {
-    const index = await getIndex();
-    const idx = index.findIndex((item) => item.category === category && item.id === id);
-    if (idx === -1) return null;
+    const counts = await getDownloadCounts();
+    const key = `${category}/${id}`;
+    const nextCounts = { ...counts, [key]: (counts[key] || 0) + 1 };
 
-    const updated = { ...index[idx], downloads: index[idx].downloads + 1 };
-    const nextIndex = [...index];
-    nextIndex[idx] = updated;
-
-    await commitFiles(`Increment downloads for ${id}`, [
-      { path: "data/index.json", content: JSON.stringify(nextIndex, null, 2) + "\n" },
-      { path: manifestPath(category, id), content: JSON.stringify(updated, null, 2) + "\n" },
+    await commitFiles(`Download: ${id}`, [
+      { path: "data/downloads.json", content: JSON.stringify(nextCounts, null, 2) + "\n" },
     ]);
-    return updated;
   });
 }
 

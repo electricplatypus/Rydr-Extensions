@@ -64,16 +64,41 @@ export async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-/** Fetches data/index.json — the fast-read aggregate of every item's metadata. Returns [] if it doesn't exist yet. */
-export async function getIndex(): Promise<MarketplaceItem[]> {
+async function fetchJsonFile<T>(path: string, fallback: T): Promise<T> {
   const { owner, name, branch } = githubConfig();
-  const { status, body } = await ghRaw(`/repos/${owner}/${name}/contents/data/index.json?ref=${branch}`);
-  if (status === 404) return [];
+  const { status, body } = await ghRaw(`/repos/${owner}/${name}/contents/${encodePath(path)}?ref=${branch}`);
+  if (status === 404) return fallback;
   if (status < 200 || status >= 300) {
-    throw new GithubApiError(status, `GitHub API index fetch failed: ${status} ${JSON.stringify(body)}`);
+    throw new GithubApiError(status, `GitHub API fetch of ${path} failed: ${status} ${JSON.stringify(body)}`);
   }
   const content = Buffer.from((body as { content: string }).content, "base64").toString("utf-8");
-  return JSON.parse(content) as MarketplaceItem[];
+  return JSON.parse(content) as T;
+}
+
+/** Live download counts, keyed by "<category>/<id>" — see getDownloadCounts. */
+export type DownloadCounts = Record<string, number>;
+
+/**
+ * Fetches data/downloads.json — download counts live here, separate from
+ * data/index.json, specifically so a download doesn't touch the same file
+ * a real edit does. vercel.json's ignoreCommand skips a rebuild for a
+ * commit that only touches this file, since counts are already read live
+ * on every request and never needed a redeploy to show up.
+ */
+export async function getDownloadCounts(): Promise<DownloadCounts> {
+  return fetchJsonFile<DownloadCounts>("data/downloads.json", {});
+}
+
+/** Fetches data/index.json — the fast-read aggregate of every item's metadata, with live download counts merged in. Returns [] if it doesn't exist yet. */
+export async function getIndex(): Promise<MarketplaceItem[]> {
+  const [items, downloads] = await Promise.all([
+    fetchJsonFile<MarketplaceItem[]>("data/index.json", []),
+    getDownloadCounts(),
+  ]);
+  return items.map((item) => ({
+    ...item,
+    downloads: downloads[`${item.category}/${item.id}`] ?? item.downloads,
+  }));
 }
 
 /** Fetches one file's raw bytes via the Contents API. */

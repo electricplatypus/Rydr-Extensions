@@ -22,6 +22,7 @@ npm run lint
 - `/api/manifest` aggregates every enabled item into the exact JSON shape Rydr's own **Settings ▸ Plugins ▸ Catalog source** already parses (see `RydRPlugins.refreshCatalog()` in the Rydr repo) — paste that URL into a live Rydr app to install straight from this marketplace, no Rydr code changes required for Plugins, Screensaver Widgets, View Extensions, and Tools & Utilities. Track HUD Themes and App Themes ship as color data and currently self-apply (Rydr has no native theme-install hook yet).
 - Each item's `files/` contents are also reachable directly via `raw.githubusercontent.com` once pushed, which Rydr's plugin loader already trusts for `entryUrl`.
 - Zip archives are created (for item downloads) and read (for uploads) with [`@zip.js/zip.js`](https://gildas-lormeau.github.io/zip.js/) — see `src/lib/archive.ts`.
+- Download counts live in their own `data/downloads.json` (a flat `"category/id" -> count` map), deliberately separate from `data/index.json`/`manifest.json` — a download shouldn't land in the same commit as a real edit, and `vercel.json`'s `ignoreCommand` skips a rebuild for a commit that only touches this file. Counts are still fully live: `getIndex()` merges them in on every read, so nothing needed a redeploy to show up in the first place.
 
 Because every read hits the GitHub API too, **local dev (`npm run dev`) needs a working `GITHUB_TOKEN` and network access** — there's no offline fallback against a local `data/` copy.
 
