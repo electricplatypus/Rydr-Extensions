@@ -10,7 +10,8 @@ interface ExtractedFile {
 }
 
 function isMetadataFile(name: string): boolean {
-  return name === "manifest.json" || /(^|\/)[\w-]+-meta\.json$/i.test(name);
+  const base = name.slice(name.lastIndexOf("/") + 1);
+  return base === "manifest.json" || /^[\w-]+-meta\.json$/i.test(base);
 }
 
 function pickEntryFile(names: string[], preferred?: string): string {
