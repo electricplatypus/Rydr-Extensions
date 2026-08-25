@@ -3,6 +3,7 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://byker.co"),
   title: "Rydr Extensions Marketplace",
   description: "Themes, plugins, screensaver widgets, view extensions, and tools for the Rydr motorcycle dashboard.",
 };

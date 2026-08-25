@@ -1,0 +1,14 @@
+<svg viewBox="0 0 430 72" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="bolt">
+      <path d="M35 6 L18 34 L28 34 L24 58 L46 28 L34 28 Z"/>
+    </clipPath>
+  </defs>
+  <svg x="0" y="4" width="64" height="64" viewBox="0 0 64 64">
+    <g clip-path="url(#bolt)">
+      <rect x="10" y="4" width="44" height="30" fill="#ff6a00"/>
+      <rect x="10" y="34" width="44" height="26" fill="#fbbf24"/>
+    </g>
+  </svg>
+  <text x="80" y="46" font-family="'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace" font-weight="700" font-size="34" fill="#ff6a00" letter-spacing="-0.5">Rydr Extensions</text>
+</svg>
