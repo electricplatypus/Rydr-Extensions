@@ -2,16 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { isCategoryId } from "@/lib/categories";
 import { extractZipArchive } from "@/lib/archive";
 import { createItem, isSafeArchivePath } from "@/lib/items";
+import { isMetadataFile, parseEmbeddedManifest } from "@/lib/manifest";
 import { CategoryId, ItemInput, RydrCategory, isThemeCategory } from "@/lib/types";
 
 interface ExtractedFile {
   name: string;
   data: Uint8Array;
-}
-
-function isMetadataFile(name: string): boolean {
-  const base = name.slice(name.lastIndexOf("/") + 1);
-  return base === "manifest.json" || /^[\w-]+-meta\.json$/i.test(base);
 }
 
 function pickEntryFile(names: string[], preferred?: string): string {
@@ -21,16 +17,6 @@ function pickEntryFile(names: string[], preferred?: string): string {
   const anyJs = names.find((n) => n.endsWith(".js"));
   if (anyJs) return anyJs;
   return names[0] || "";
-}
-
-function tryParseEmbeddedManifest(files: ExtractedFile[]): Record<string, unknown> {
-  const candidate = files.find((f) => isMetadataFile(f.name));
-  if (!candidate) return {};
-  try {
-    return JSON.parse(Buffer.from(candidate.data).toString("utf-8"));
-  } catch {
-    return {};
-  }
 }
 
 export async function POST(req: NextRequest, { params }: { params: { category: string } }) {
@@ -68,7 +54,7 @@ export async function POST(req: NextRequest, { params }: { params: { category: s
     return NextResponse.json({ error: "Archive is empty." }, { status: 400 });
   }
 
-  const embedded = tryParseEmbeddedManifest(extracted);
+  const embedded = parseEmbeddedManifest(extracted);
   const field = (key: string) => {
     const value = form.get(key);
     return typeof value === "string" ? value.trim() : "";

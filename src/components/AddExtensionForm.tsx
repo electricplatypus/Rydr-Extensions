@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { ZipReader, Uint8ArrayReader, Uint8ArrayWriter } from "@zip.js/zip.js";
+import { parseEmbeddedManifest } from "@/lib/manifest";
 import { Category, CategoryId, RydrCategory, isThemeCategory } from "@/lib/types";
 
 const RYDR_CATEGORIES: RydrCategory[] = ["display", "media", "performance", "navigation", "weather", "theme", "tool"];
@@ -21,6 +23,44 @@ export function AddExtensionForm({ categories }: { categories: Category[] }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [published, setPublished] = useState<{ category: CategoryId; id: string } | null>(null);
+  const [autoFilledFrom, setAutoFilledFrom] = useState<string | null>(null);
+
+  async function onFileSelected(selected: File | null) {
+    setFile(selected);
+    setAutoFilledFrom(null);
+    if (!selected) return;
+
+    let embedded: Record<string, unknown>;
+    try {
+      const buffer = new Uint8Array(await selected.arrayBuffer());
+      const reader = new ZipReader(new Uint8ArrayReader(buffer));
+      const entries = await reader.getEntries();
+      const files = [];
+      for (const entry of entries) {
+        if (entry.directory || !entry.getData) continue;
+        const data = await entry.getData(new Uint8ArrayWriter());
+        files.push({ name: entry.filename.replace(/^\/+/, ""), data });
+      }
+      await reader.close();
+      embedded = parseEmbeddedManifest(files);
+    } catch {
+      return; // Not a readable zip yet — the server still parses it on submit.
+    }
+    if (Object.keys(embedded).length === 0) return;
+
+    if (typeof embedded.name === "string") setName(embedded.name);
+    if (typeof embedded.description === "string") setDescription(embedded.description);
+    if (typeof embedded.author === "string") setAuthor(embedded.author);
+    if (typeof embedded.version === "string") setVersion(embedded.version);
+    if (typeof embedded.icon === "string") setIcon(embedded.icon);
+    if (typeof embedded.repo === "string") setRepo(embedded.repo);
+    if (typeof embedded.category === "string") setRydrCategory(embedded.category as RydrCategory);
+    if (typeof embedded.entryFile === "string") setEntryFile(embedded.entryFile);
+    if (Array.isArray(embedded.tags)) {
+      setTags(embedded.tags.filter((t): t is string => typeof t === "string").join(", "));
+    }
+    setAutoFilledFrom(selected.name);
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,6 +96,7 @@ export function AddExtensionForm({ categories }: { categories: Category[] }) {
     setPublished({ category, id: data.id });
     setSubmitting(false);
     setFile(null);
+    setAutoFilledFrom(null);
     setName("");
     setDescription("");
   }
@@ -90,12 +131,15 @@ export function AddExtensionForm({ categories }: { categories: Category[] }) {
           type="file"
           accept=".zip,.skill"
           className="text-sm"
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
+          onChange={(e) => onFileSelected(e.target.files?.[0] || null)}
         />
         <span className="text-xs text-[var(--text-muted)]">
-          Include a <code>manifest.json</code> (or <code>&lt;id&gt;-meta.json</code>) at the archive root to
-          auto-fill the fields below — anything you type here overrides it.
+          Include a <code>manifest.json</code> (or <code>&lt;id&gt;-meta.json</code>) anywhere in the archive to
+          auto-fill the fields below — anything you change afterward overrides it.
         </span>
+        {autoFilledFrom && (
+          <span className="text-xs text-green-400">Auto-filled from {autoFilledFrom}.</span>
+        )}
       </label>
 
       <label className="flex flex-col gap-1 text-sm">
