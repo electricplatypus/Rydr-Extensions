@@ -135,15 +135,16 @@ export interface CommitFile {
 
 /**
  * Commits multiple file changes in one atomic commit via the Git Data API
- * (blob -> tree -> commit -> ref update). A file with `content: null` is
- * removed from the tree (GitHub's documented way to delete a path when
- * building a tree from a base_tree).
+ * (blob -> tree -> commit -> ref update) against an arbitrary branch. A file
+ * with `content: null` is removed from the tree (GitHub's documented way to
+ * delete a path when building a tree from a base_tree).
  */
-export async function commitFiles(
+export async function commitFilesToBranch(
+  branch: string,
   message: string,
   files: CommitFile[]
 ): Promise<{ commitSha: string; commitUrl: string }> {
-  const { owner, name, branch } = githubConfig();
+  const { owner, name } = githubConfig();
   const base = `/repos/${owner}/${name}`;
 
   const ref = await gh(`${base}/git/ref/heads/${branch}`);
@@ -185,4 +186,53 @@ export async function commitFiles(
     commitSha: commit.sha,
     commitUrl: commit.html_url || `https://github.com/${owner}/${name}/commit/${commit.sha}`,
   };
+}
+
+/** Commits to the configured branch (main) — the direct-write path every existing admin action uses. */
+export async function commitFiles(
+  message: string,
+  files: CommitFile[]
+): Promise<{ commitSha: string; commitUrl: string }> {
+  const { branch } = githubConfig();
+  return commitFilesToBranch(branch, message, files);
+}
+
+/**
+ * Creates a new branch pointed at `fromSha`, or at the tip of the configured
+ * base branch (main) if omitted. Used for the route-maps PR-based submission
+ * flow (see src/lib/routeMaps.ts) — unlike every other write in this app,
+ * an untrusted public submission must land on a branch for review, never
+ * commit straight to main.
+ */
+export async function createBranch(branchName: string, fromSha?: string): Promise<string> {
+  const { owner, name, branch } = githubConfig();
+  const base = `/repos/${owner}/${name}`;
+  const sha = fromSha || (await gh(`${base}/git/ref/heads/${branch}`)).object.sha;
+  await gh(`${base}/git/refs`, {
+    method: "POST",
+    body: JSON.stringify({ ref: `refs/heads/${branchName}`, sha }),
+  });
+  return sha;
+}
+
+export interface PullRequestParams {
+  title: string;
+  body: string;
+  head: string;
+  base?: string;
+}
+
+/** Opens a pull request from `head` into `base` (defaults to the configured base branch). */
+export async function openPullRequest(params: PullRequestParams): Promise<{ number: number; url: string }> {
+  const { owner, name, branch } = githubConfig();
+  const pr = await gh(`/repos/${owner}/${name}/pulls`, {
+    method: "POST",
+    body: JSON.stringify({
+      title: params.title,
+      body: params.body,
+      head: params.head,
+      base: params.base || branch,
+    }),
+  });
+  return { number: pr.number, url: pr.html_url };
 }
