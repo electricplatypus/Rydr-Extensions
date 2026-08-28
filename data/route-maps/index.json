@@ -1,1 +1,21 @@
-[]
+[
+  {
+    "id": "rt-460-bluefield-wv-to-rt-67-swords-creek-va-1787957301014",
+    "name": "Rt. 460 Bluefield, WV to Rt. 67 Swords Creek, VA",
+    "description": "Four lane highway from Bluefield through Tazewell, Claypool Hill, Richlands, to Swords Creek, VA.",
+    "category": "touring",
+    "region": "Southwest Virginia",
+    "author": "Ezz Gee",
+    "sourceType": "imported",
+    "sourceUrl": "",
+    "distanceMi": 41.2,
+    "pointCount": 3130,
+    "tags": [
+      "Primary Highway's"
+    ],
+    "entryFile": "data/route-maps/rt-460-bluefield-wv-to-rt-67-swords-creek-va-1787957301014/route.json",
+    "status": "pending",
+    "createdAt": "2026-08-28T22:48:21.215Z",
+    "prUrl": ""
+  }
+]
