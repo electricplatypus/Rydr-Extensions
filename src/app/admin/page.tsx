@@ -10,9 +10,14 @@ export default async function AdminPage() {
     <div>
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-2xl font-bold">Admin</h1>
-        <Link href="/admin/upload" className="btn text-sm">
-          📦 Add Extension
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/admin/route-maps" className="btn secondary text-sm">
+            🛣️ Route Approvals
+          </Link>
+          <Link href="/admin/upload" className="btn text-sm">
+            📦 Add Extension
+          </Link>
+        </div>
       </div>
       <p className="text-[var(--text-muted)] mb-8">Add, edit, or remove marketplace items in each category.</p>
 
