@@ -1,0 +1,41 @@
+[
+  {
+    "id": "demo-plugin",
+    "category": "tools-utilities",
+    "name": "Demo Plugin",
+    "description": "A reference plugin for testing the RydR plugin manager — a minimal dashboard card plus a matching screensaver widget.",
+    "author": "electricplatypus",
+    "version": "1.0.0",
+    "icon": "🧪",
+    "repo": "github.com/electricplatypus/rydr",
+    "entryFile": "demo-plugin.js",
+    "rydrCategory": "tool",
+    "createdAt": "2026-04-18T12:00:00.000Z",
+    "updatedAt": "2026-04-18T12:00:00.000Z",
+    "downloads": 54,
+    "tags": [
+      "reference",
+      "developer"
+    ]
+  },
+  {
+    "id": "unit-converter",
+    "category": "tools-utilities",
+    "name": "Unit Converter",
+    "description": "A quick speed/distance/volume unit converter dashboard card for imperial/metric riders.",
+    "author": "rydr-extensions",
+    "version": "1.0.0",
+    "icon": "🔁",
+    "repo": "github.com/electricplatypus/rydr-extensions",
+    "entryFile": "unit-converter.js",
+    "rydrCategory": "tool",
+    "createdAt": "2026-08-10T11:00:00.000Z",
+    "updatedAt": "2026-08-10T11:00:00.000Z",
+    "downloads": 4,
+    "tags": [
+      "utility",
+      "units",
+      "converter"
+    ]
+  }
+]

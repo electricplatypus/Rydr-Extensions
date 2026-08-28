@@ -1,0 +1,41 @@
+[
+  {
+    "id": "fuel-log",
+    "category": "view-extensions",
+    "name": "Fuel Log",
+    "description": "Log fill-ups (gallons + cost) and browse fuel history in its own full-screen view, added to the sidebar menu.",
+    "author": "rydr-extensions",
+    "version": "1.0.0",
+    "icon": "⛽",
+    "repo": "github.com/electricplatypus/rydr-extensions",
+    "entryFile": "fuel-log.js",
+    "rydrCategory": "tool",
+    "createdAt": "2026-07-28T10:00:00.000Z",
+    "updatedAt": "2026-07-28T10:00:00.000Z",
+    "downloads": 21,
+    "tags": [
+      "view-extension",
+      "fuel",
+      "logbook"
+    ]
+  },
+  {
+    "id": "ride-journal",
+    "category": "view-extensions",
+    "name": "Ride Journal",
+    "description": "A freeform journal for jotting notes about a ride, in its own full-screen view with a sidebar entry.",
+    "author": "rydr-extensions",
+    "version": "1.0.0",
+    "icon": "📓",
+    "repo": "github.com/electricplatypus/rydr-extensions",
+    "entryFile": "ride-journal.js",
+    "rydrCategory": "tool",
+    "createdAt": "2026-08-02T09:30:00.000Z",
+    "updatedAt": "2026-08-02T09:30:00.000Z",
+    "downloads": 7,
+    "tags": [
+      "view-extension",
+      "journal"
+    ]
+  }
+]

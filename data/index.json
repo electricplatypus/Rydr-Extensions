@@ -316,10 +316,25 @@
     "rydrCategory": "tool",
     "createdAt": "2026-08-02T09:30:00.000Z",
     "updatedAt": "2026-08-02T09:30:00.000Z",
-    "downloads": 7,
+    "downloads": 8,
     "tags": [
       "view-extension",
       "journal"
     ]
+  },
+  {
+    "id": "neon",
+    "category": "trackhud-themes",
+    "name": "Neon",
+    "description": "",
+    "author": "",
+    "version": "1.0.0",
+    "icon": "◉",
+    "entryFile": "rydr-track-hud-theme/examples/neon-cluster/preview.png",
+    "rydrCategory": "tool",
+    "createdAt": "2026-08-25T08:10:34.147Z",
+    "updatedAt": "2026-08-25T08:10:34.147Z",
+    "downloads": 0,
+    "tags": []
   }
 ]

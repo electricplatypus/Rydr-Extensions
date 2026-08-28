@@ -1,0 +1,56 @@
+[
+  {
+    "id": "arctic-frost",
+    "category": "app-themes",
+    "name": "Arctic Frost",
+    "description": "A crisp light dashboard theme with icy blue accents, tuned for bright daylight riding.",
+    "author": "rydr-extensions",
+    "version": "1.0.0",
+    "icon": "🩵",
+    "repo": "github.com/electricplatypus/rydr-extensions",
+    "entryFile": "arctic-frost.json",
+    "rydrCategory": "theme",
+    "colors": {
+      "bg": "#eef3f8",
+      "panel": "#ffffff",
+      "primary": "#2f8fd6",
+      "secondary": "#5b6b7c",
+      "text": "#151c26"
+    },
+    "createdAt": "2026-08-01T12:00:00.000Z",
+    "updatedAt": "2026-08-01T12:00:00.000Z",
+    "downloads": 29,
+    "tags": [
+      "theme",
+      "light",
+      "cool"
+    ]
+  },
+  {
+    "id": "midnight-copper",
+    "category": "app-themes",
+    "name": "Midnight Copper",
+    "description": "A deep charcoal dashboard theme with warm copper accents — self-applying (see note on the item page about Rydr's theme-install hook).",
+    "author": "rydr-extensions",
+    "version": "1.0.0",
+    "icon": "🟠",
+    "repo": "github.com/electricplatypus/rydr-extensions",
+    "entryFile": "midnight-copper.json",
+    "rydrCategory": "theme",
+    "colors": {
+      "bg": "#14100d",
+      "panel": "#1e1712",
+      "primary": "#c9772f",
+      "secondary": "#a68f7a",
+      "text": "#f5ece2"
+    },
+    "createdAt": "2026-07-15T12:00:00.000Z",
+    "updatedAt": "2026-07-15T12:00:00.000Z",
+    "downloads": 63,
+    "tags": [
+      "theme",
+      "dark",
+      "warm"
+    ]
+  }
+]

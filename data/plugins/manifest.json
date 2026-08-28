@@ -1,0 +1,103 @@
+[
+  {
+    "id": "apex-drag",
+    "category": "plugins",
+    "name": "Apex Drag & Launch Telemetry",
+    "description": "High-performance drag timing for 1/4 mi, 1/2 mi, 1 mi & 0-60 runs with auto launch trigger, run history logs, and social share graphics.",
+    "author": "electricplatypus",
+    "version": "1.0.0",
+    "icon": "🏁",
+    "repo": "github.com/electricplatypus/rydr",
+    "entryFile": "apex-drag.js",
+    "rydrCategory": "performance",
+    "createdAt": "2026-06-05T13:00:00.000Z",
+    "updatedAt": "2026-06-05T13:00:00.000Z",
+    "downloads": 189,
+    "tags": [
+      "performance",
+      "drag-timing",
+      "standalone"
+    ]
+  },
+  {
+    "id": "chase-cam-3d",
+    "category": "plugins",
+    "name": "3D Chase Cam",
+    "description": "A live MapLibre + 3D bike chase camera that follows your real GPS position on a tilted dark map with a glowing orange trail.",
+    "author": "electricplatypus",
+    "version": "1.0.0",
+    "icon": "🎥",
+    "repo": "github.com/electricplatypus/rydr",
+    "entryFile": "chase-cam-3d.js",
+    "rydrCategory": "navigation",
+    "createdAt": "2026-06-22T16:30:00.000Z",
+    "updatedAt": "2026-06-22T16:30:00.000Z",
+    "downloads": 97,
+    "tags": [
+      "map",
+      "3d",
+      "navigation",
+      "standalone"
+    ]
+  },
+  {
+    "id": "hourly-precip",
+    "category": "plugins",
+    "name": "Hourly Precipitation",
+    "description": "An animated hourly chance-of-rain forecast with a soft weather-condition background — sun, rain, and clouds swept across the same hours the chart shows.",
+    "author": "electricplatypus",
+    "version": "1.0.0",
+    "icon": "☔",
+    "repo": "github.com/electricplatypus/rydr",
+    "entryFile": "hourly-precip.js",
+    "rydrCategory": "weather",
+    "createdAt": "2026-07-10T08:45:00.000Z",
+    "updatedAt": "2026-07-10T08:45:00.000Z",
+    "downloads": 143,
+    "tags": [
+      "weather",
+      "forecast",
+      "standalone"
+    ]
+  },
+  {
+    "id": "ridepulse",
+    "category": "plugins",
+    "name": "Ride Pulse",
+    "description": "A motorcycle instrument cluster for speed, lean, and heading, plus an all-time logbook across every saved ride.",
+    "author": "electricplatypus",
+    "version": "2.0.0",
+    "icon": "⚡",
+    "repo": "github.com/electricplatypus/Workspace",
+    "entryFile": "ridepulse.js",
+    "rydrCategory": "display",
+    "createdAt": "2026-05-02T10:00:00.000Z",
+    "updatedAt": "2026-06-18T14:20:00.000Z",
+    "downloads": 414,
+    "tags": [
+      "dashboard",
+      "telemetry",
+      "built-in"
+    ]
+  },
+  {
+    "id": "spotify-playlists",
+    "category": "plugins",
+    "name": "Spotify Playlists",
+    "description": "Browse your Spotify playlists as a list or a thumbnail grid, with sort and quick-play.",
+    "author": "electricplatypus",
+    "version": "1.2.0",
+    "icon": "🎵",
+    "repo": "github.com/electricplatypus/rydr",
+    "entryFile": "spotify-playlists.js",
+    "rydrCategory": "media",
+    "createdAt": "2026-05-20T09:15:00.000Z",
+    "updatedAt": "2026-07-01T11:40:00.000Z",
+    "downloads": 268,
+    "tags": [
+      "music",
+      "spotify",
+      "standalone"
+    ]
+  }
+]
