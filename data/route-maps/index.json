@@ -1,1 +1,23 @@
-[]
+[
+  {
+    "id": "beartooth-pass-1787959846515",
+    "name": "Beartooth Pass",
+    "description": "North entrance....Go south of Billings and I-90 on highway 212 through Red Lodge (MT). About 15 minutes south of town you go UP! way up to nearly 11,000 feet. Extreme road. About 2 hrs later after going over the top and down a even narrower south decent into Wyoming, you can go West into Yellowstone Park on 212 through Cook City, or East to Cody on the Chief Joseph scenic Highway, and it is nearly as good as the Beartooth! From the East do yourselves a favor and come from Sheridan over the Bighorn Mountains(another great route!). Suggest if going South to forget Yellowstone Park and go east! Fantastic mountain route. If you gotta see the park..Turn around at Sheridan and go back in on 14 through Cody. Don't miss these roads!",
+    "category": "touring",
+    "region": "Montana",
+    "author": "Ess Gee",
+    "sourceType": "external",
+    "sourceUrl": "https://www.motorcycleroads.com/motorcycle-roads/montana/beartooth-pass?s=99",
+    "distanceMi": 60.8,
+    "pointCount": 311,
+    "tags": [
+      "Beartooth",
+      "Scenic",
+      "Day Trip"
+    ],
+    "entryFile": "data/route-maps/beartooth-pass-1787959846515/route.json",
+    "status": "pending",
+    "createdAt": "2026-08-28T23:30:46.734Z",
+    "prUrl": ""
+  }
+]
