@@ -151,8 +151,8 @@ async function currentIndex(): Promise<RouteMapEntry[]> {
  * form has to be reviewable before it's live; see
  * commitFilesToBranch/createBranch/openPullRequest in ./github, and
  * approveSubmission/rejectSubmission below for the review step itself.
- * directAddRoute (further below) is the one path that skips this — reserved
- * for the rider's own admin-token-gated, pre-validated trusted sources.
+ * directAddRoute (further below) is the one path that skips this — gated
+ * by the rider's own admin token instead of a review step.
  */
 export async function submitRoute(input: RouteSubmissionInput): Promise<{ id: string; prUrl: string }> {
   const { entry, points } = parseRouteSubmission(input);
@@ -286,30 +286,23 @@ export async function rejectSubmission(prNumber: number, reason?: string): Promi
 /**
  * Adds a route straight to the live catalog with status "approved" — no PR,
  * no human review. This is the one write path that skips submitRoute()'s
- * safety net, so it's reserved for the rider's own trusted, declaratively-
- * extracted route sources (see the RydR plugin's Route Sources screen) and
- * is gated server-side by ROUTE_MAPS_ADMIN_TOKEN at the API route level —
- * never call this from anything that isn't already validating the caller.
- * Runs the exact same field/point validation as submitRoute() (this is the
- * "error check before saving" — a route that fails validation is rejected
- * outright, never partially written), plus two checks specific to
- * unreviewed, automated submissions: it must declare where it came from
- * (sourceType "external" + a sourceUrl), and that source URL must not
- * already be in the catalog, so a source misconfigured to re-scrape the
- * same page can't spam duplicate entries with nothing to catch it.
+ * safety net, so it's gated server-side by ROUTE_MAPS_ADMIN_TOKEN at the API
+ * route level — never call this from anything that isn't already validating
+ * the caller; the token, not the shape of the payload, is what makes this
+ * safe to expose. Runs the exact same field/point validation as
+ * submitRoute() (this is the "error check before saving" — a route that
+ * fails validation is rejected outright, never partially written). Any
+ * sourceType is allowed here (a rider's own recorded ride or a pasted
+ * import has no meaningful "source page" to require) — when a sourceUrl
+ * *is* given, it still has to be new: a source misconfigured to re-scrape
+ * the same page can't spam duplicate entries with nothing to catch it.
  */
 export async function directAddRoute(input: RouteSubmissionInput): Promise<{ id: string }> {
   const { entry, points } = parseRouteSubmission(input);
 
-  if (entry.sourceType !== "external" || !entry.sourceUrl) {
-    throw new RouteValidationError(
-      'Direct-add submissions must include sourceType "external" and a sourceUrl, so an unreviewed entry always stays traceable to where it came from.'
-    );
-  }
-
   return withRetry(async () => {
     const index = await currentIndex();
-    if (index.some((e) => e.sourceUrl && e.sourceUrl === entry.sourceUrl)) {
+    if (entry.sourceUrl && index.some((e) => e.sourceUrl && e.sourceUrl === entry.sourceUrl)) {
       throw new RouteValidationError("A route from this source URL is already in the catalog.");
     }
 
