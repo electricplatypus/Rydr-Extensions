@@ -1,15 +1,15 @@
 {
   "id": "neon",
   "category": "trackhud-themes",
-  "name": "Neon",
-  "description": "",
-  "author": "",
+  "name": "Neon Cluster",
+  "description": "Blue-backlit analog automotive instrument cluster with a live nav panel, built from a rider-supplied reference image via the rydr-track-hud-theme skill.",
+  "author": "RydR (built-in)",
   "version": "1.0.0",
-  "icon": "◉",
-  "entryFile": "rydr-track-hud-theme/examples/neon-cluster/preview.png",
-  "rydrCategory": "tool",
+  "icon": "🏍️",
+  "entryFile": "theme.json",
+  "rydrCategory": "theme",
   "createdAt": "2026-08-25T08:10:34.147Z",
-  "updatedAt": "2026-08-25T08:10:34.147Z",
+  "updatedAt": "2026-08-28T00:00:00.000Z",
   "downloads": 0,
-  "tags": []
+  "tags": ["trackhud", "theme", "dark", "image-template"]
 }

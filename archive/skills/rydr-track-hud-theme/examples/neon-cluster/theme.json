@@ -1,0 +1,97 @@
+{
+  "id": "neon-cluster",
+  "name": "Neon Cluster",
+  "description": "Blue-backlit analog automotive instrument cluster with a live nav panel, built from a rider-supplied reference image following skills/rydr-track-hud-theme.",
+  "author": "RydR (built-in)",
+  "version": "1.0.0",
+  "base": "dark",
+  "layoutMode": "image-template",
+  "aspectRatio": "2:1",
+  "preview": "preview.png",
+  "background": "assets/background.png",
+
+  "slots": [
+    {
+      "id": "speedometer",
+      "widget": "speedometer",
+      "position": { "x": 0.318, "y": 0.097, "w": 0.369, "h": 0.739 },
+      "asset": "assets/speedometer.png",
+      "numberRange": { "min": 0, "max": 280 },
+      "numberEvery": 40,
+      "redlineFrom": false,
+      "gaugeColor": "#5b9af1",
+      "notes": "Direct match to the reference's own center gauge — its baked-in 20-280 tick range and 'mph' label already correspond to RydR's real speed data. Live RydRGauges SVG (ticks/needle) draws on top of this chrome asset. Reference's ring is a uniform blue throughout, no redline — sampled directly from the source image, not the app's own accent color, per the 'one fixed style' rule."
+    },
+    {
+      "id": "lean-gauge",
+      "widget": "leanAngle",
+      "position": { "x": 0.689, "y": 0.361, "w": 0.200, "h": 0.400 },
+      "asset": "assets/lean-gauge.png",
+      "numberRange": { "min": 0, "max": 60 },
+      "gaugeGradient": [
+        { "offset": 0, "color": "#5f8aeb" },
+        { "offset": 0.6, "color": "#c8377f" },
+        { "offset": 1, "color": "#f2372a" }
+      ],
+      "notes": "Substituted from the reference's tachometer (1-8, redline zone) — confirmed with rider. Bezel chrome reused; ticks/numbers are drawn live by RydRGauges (0-60 degrees), not the source's baked '1-8'/RPM labels. The reference's ring isn't a flat blue + abrupt redline — it's a continuous blue-to-pink-to-red sweep, sampled directly from the source image at low/mid/high angular positions and reproduced via gaugeGradient rather than the default flat-color+redlineFrom look."
+    },
+    {
+      "id": "map-panel",
+      "widget": "map",
+      "position": { "x": 0.172, "y": 0.275, "w": 0.174, "h": 0.367 },
+      "notes": "No image asset — live map renders here. See map-style.json for the dark-navy/cyan-route style matching the reference panel."
+    },
+    {
+      "id": "temp-gauge",
+      "widget": "weatherTemp",
+      "position": { "x": 0.628, "y": 0.792, "w": 0.167, "h": 0.056 },
+      "asset": "assets/temp-gauge.png",
+      "notes": "Substituted from the reference's C-H coolant-temperature hash-mark gauge with real ambient weather temperature — confirmed with rider."
+    },
+    {
+      "id": "status-indicator",
+      "widget": "rideStatus",
+      "position": { "x": 0.447, "y": 0.792, "w": 0.106, "h": 0.056 },
+      "asset": "assets/status-indicator.png",
+      "notes": "Substituted from the reference's P/gear-selector indicator with RydR's Recording/Paused/Not Recording status — confirmed with rider."
+    },
+    {
+      "id": "decorative-cluster",
+      "widget": null,
+      "position": { "x": 0.114, "y": 0.339, "w": 0.036, "h": 0.278 },
+      "asset": "assets/decorative-icon-stack.png",
+      "notes": "Only the warning-triangle telltale is still baked into this strip — ECO and fuel-pump both had real substitutions found (see heading-badge, spotify-thumbnail below) and are now holes punched in this asset, same as the sun icon before them."
+    },
+    {
+      "id": "weather-alert-icon",
+      "widget": "weatherAlert",
+      "position": { "x": 0.105, "y": 0.394, "w": 0.046, "h": 0.083 },
+      "notes": "Substituted from the reference's warning-triangle telltale — confirmed with rider. No image asset: the baked triangle in decorative-icon-stack.png stays as its dim/off look, this slot only adds a bright glow overlay on top while RydR has a real active NOAA weather alert (activeAlerts.length > 0) — never fabricated, off by default."
+    },
+    {
+      "id": "weather-condition-icon",
+      "widget": "weatherCondition",
+      "position": { "x": 0.1097, "y": 0.4778, "w": 0.0417, "h": 0.075 },
+      "notes": "Substituted from the reference's static sun icon — confirmed with rider. Hole punched in both background.png and decorative-icon-stack.png at this position; the live weather emoji (RydRUtils.weatherEmoji, same one on the main dashboard) renders here instead, so it actually reflects current conditions rather than always showing a sun."
+    },
+    {
+      "id": "heading-badge",
+      "widget": "heading",
+      "position": { "x": 0.1097, "y": 0.3333, "w": 0.0417, "h": 0.0694 },
+      "notes": "Substituted from the reference's ECO badge — rider's own suggestion, not proposed by the agent. Hole punched in background.png/decorative-icon-stack.png; a live compass-direction label (N/NE/E/...) renders in the badge's frame instead of the fixed 'ECO' text."
+    },
+    {
+      "id": "spotify-thumbnail",
+      "widget": "spotifyArt",
+      "position": { "x": 0.1097, "y": 0.55, "w": 0.0417, "h": 0.075 },
+      "notes": "Substituted from the reference's fuel-pump icon — rider's own suggestion. Hole punched in background.png/decorative-icon-stack.png; shows the current Spotify track's album art when a track is playing, hidden (falls back to no art) when nothing is."
+    },
+    {
+      "id": "spotify-progress-bar",
+      "widget": "spotifyProgress",
+      "position": { "x": 0.206, "y": 0.792, "w": 0.167, "h": 0.056 },
+      "asset": "assets/decorative-fuel.png",
+      "notes": "Substituted from the reference's E-F fuel gauge — rider's own suggestion: E (empty) to F (full) reads naturally as playback position, start to end. No hole punched — the baked E/F hash-mark frame stays as chrome, a live fill bar overlays it (using the Spotify Web Playback API's progress_ms/duration_ms, already read by js/spotify.js's RydRSpotify.getState().nowPlaying) growing left-to-right as the current track plays. Hidden when nothing is playing."
+    }
+  ]
+}

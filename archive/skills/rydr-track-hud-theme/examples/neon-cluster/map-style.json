@@ -1,0 +1,15 @@
+{
+  "mode": "google-maps-styles",
+  "styles": [
+    { "elementType": "geometry", "stylers": [{ "color": "#0b1220" }] },
+    { "elementType": "labels.text.fill", "stylers": [{ "color": "#7d93b8" }] },
+    { "elementType": "labels.text.stroke", "stylers": [{ "color": "#0b1220" }] },
+    { "featureType": "administrative", "elementType": "geometry", "stylers": [{ "color": "#16233a" }] },
+    { "featureType": "poi", "stylers": [{ "visibility": "off" }] },
+    { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#123a4a" }] },
+    { "featureType": "road", "elementType": "geometry.stroke", "stylers": [{ "color": "#22d3ee" }] },
+    { "featureType": "road.highway", "elementType": "geometry.stroke", "stylers": [{ "color": "#5fe3ff" }] },
+    { "featureType": "transit", "stylers": [{ "visibility": "off" }] },
+    { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#050a12" }] }
+  ]
+}
