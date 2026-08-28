@@ -2,6 +2,8 @@
 
 A VS Code Marketplace-style site for add-ons to the [Rydr](https://github.com/electricplatypus/rydr) motorcycle dashboard app: Track HUD themes, app themes, plugins, screensaver widgets, view extensions, and tools/utilities — browsable, sortable (date/name/downloads), downloadable, and manageable via an admin CRUD.
 
+**Production:** https://rydr-extensions.vercel.app/
+
 ## Development
 
 ```bash
