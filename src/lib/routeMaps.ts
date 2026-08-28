@@ -1,4 +1,17 @@
-import { commitFilesToBranch, createBranch, getFileBytes, openPullRequest, withRetry } from "./github";
+import {
+  closePullRequest,
+  commitFiles,
+  commitFilesToBranch,
+  createBranch,
+  deleteBranch,
+  fetchJsonFileOnRef,
+  getFileBytes,
+  getPullRequest,
+  listOpenPullRequests,
+  mergePullRequest,
+  openPullRequest,
+  withRetry,
+} from "./github";
 import { slugify } from "./items";
 
 export type RouteCategory = "scenic" | "twisty" | "rally" | "touring" | "offroad";
@@ -48,6 +61,8 @@ const REGION_MAX = 120;
 const TAG_MAX = 40;
 const TAGS_MAX_COUNT = 12;
 const POINTS_MAX = 20000; // generous ceiling for a long multi-day route track
+
+const SUBMISSION_BRANCH_PREFIX = "route-submission/";
 
 export class RouteValidationError extends Error {}
 
@@ -123,23 +138,31 @@ export function parseRouteSubmission(input: RouteSubmissionInput): { entry: Omit
   };
 }
 
+/** Fetches data/route-maps/index.json off the configured base branch (main). */
+async function currentIndex(): Promise<RouteMapEntry[]> {
+  return getFileBytes("data/route-maps/index.json")
+    .then((bytes) => JSON.parse(Buffer.from(bytes).toString("utf-8")) as RouteMapEntry[])
+    .catch(() => [] as RouteMapEntry[]);
+}
+
 /**
- * Opens a pull request adding a new route to data/route-maps/ — the one
- * write path in this app that never commits straight to main. A public,
- * unauthenticated submission form has to be reviewable before it's live;
- * see commitFilesToBranch/createBranch/openPullRequest in ./github.
+ * Opens a pull request adding a new route to data/route-maps/ — the default
+ * write path for a route submission. A public, unauthenticated submission
+ * form has to be reviewable before it's live; see
+ * commitFilesToBranch/createBranch/openPullRequest in ./github, and
+ * approveSubmission/rejectSubmission below for the review step itself.
+ * directAddRoute (further below) is the one path that skips this — reserved
+ * for the rider's own admin-token-gated, pre-validated trusted sources.
  */
 export async function submitRoute(input: RouteSubmissionInput): Promise<{ id: string; prUrl: string }> {
   const { entry, points } = parseRouteSubmission(input);
 
   return withRetry(async () => {
     const id = `${slugify(entry.name) || "route"}-${Date.now()}`;
-    const branchName = `route-submission/${id}`;
+    const branchName = `${SUBMISSION_BRANCH_PREFIX}${id}`;
     const entryFile = `data/route-maps/${id}/route.json`;
 
-    const indexRaw: RouteMapEntry[] = await getFileBytes("data/route-maps/index.json")
-      .then((bytes) => JSON.parse(Buffer.from(bytes).toString("utf-8")) as RouteMapEntry[])
-      .catch(() => [] as RouteMapEntry[]);
+    const indexRaw = await currentIndex();
 
     const fullEntry: RouteMapEntry = {
       ...entry,
@@ -181,5 +204,131 @@ export async function submitRoute(input: RouteSubmissionInput): Promise<{ id: st
     });
 
     return { id, prUrl: pr.url };
+  });
+}
+
+function idFromSubmissionBranch(headRef: string): string {
+  return headRef.startsWith(SUBMISSION_BRANCH_PREFIX) ? headRef.slice(SUBMISSION_BRANCH_PREFIX.length) : headRef;
+}
+
+export interface PendingSubmission {
+  prNumber: number;
+  prUrl: string;
+  createdAt: string;
+  entry: RouteMapEntry;
+}
+
+/**
+ * Lists open route-submission PRs together with the catalog entry each one
+ * adds — backs the same-origin /admin/route-maps page, so approving a route
+ * never requires visiting GitHub itself. The route's id is deterministic
+ * from its branch name (route-submission/<id>), so each PR's own entry is
+ * an exact id match on that PR's branch — no guessing against main's index.
+ */
+export async function listPendingSubmissions(): Promise<PendingSubmission[]> {
+  const prs = await listOpenPullRequests(SUBMISSION_BRANCH_PREFIX);
+  const results = await Promise.all(
+    prs.map(async (pr) => {
+      const id = idFromSubmissionBranch(pr.headRef);
+      const branchIndex = await fetchJsonFileOnRef<RouteMapEntry[]>("data/route-maps/index.json", pr.headSha, []);
+      const entry = branchIndex.find((e) => e.id === id);
+      if (!entry) return null;
+      return { prNumber: pr.number, prUrl: pr.url, createdAt: pr.createdAt, entry };
+    })
+  );
+  return results
+    .filter((r): r is PendingSubmission => r !== null)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+/**
+ * Approves a pending submission: merges its PR (if not merged already) then
+ * flips the catalog entry's status to "approved" in a follow-up commit to
+ * main — merging alone isn't enough, since the entry lands as "pending".
+ * Idempotent: safe to call again if the status-flip commit fails partway
+ * through, or if the PR was merged by some other means first.
+ */
+export async function approveSubmission(prNumber: number): Promise<RouteMapEntry> {
+  const pr = await getPullRequest(prNumber);
+  const id = idFromSubmissionBranch(pr.headRef);
+
+  if (!pr.merged) {
+    await mergePullRequest(prNumber, "squash");
+  }
+
+  return withRetry(async () => {
+    const index = await currentIndex();
+    const i = index.findIndex((e) => e.id === id);
+    if (i === -1) {
+      throw new RouteValidationError(
+        `Route "${id}" wasn't found in the catalog after merging PR #${prNumber} — check data/route-maps/index.json on GitHub.`
+      );
+    }
+    if (index[i].status === "approved") return index[i];
+    index[i] = { ...index[i], status: "approved", prUrl: pr.url };
+    await commitFiles(`Approve route: ${index[i].name}`, [
+      { path: "data/route-maps/index.json", content: JSON.stringify(index, null, 2) + "\n" },
+    ]);
+    return index[i];
+  });
+}
+
+/** Rejects a pending submission: closes its PR without merging and best-effort deletes the branch. Nothing on main to undo — the entry only ever existed on the PR's branch. */
+export async function rejectSubmission(prNumber: number, reason?: string): Promise<void> {
+  const pr = await getPullRequest(prNumber);
+  await closePullRequest(
+    prNumber,
+    reason ? `Closed without merging: ${reason}` : "Closed without merging via the RydR-Extensions admin screen."
+  );
+  await deleteBranch(pr.headRef).catch(() => {});
+}
+
+/**
+ * Adds a route straight to the live catalog with status "approved" — no PR,
+ * no human review. This is the one write path that skips submitRoute()'s
+ * safety net, so it's reserved for the rider's own trusted, declaratively-
+ * extracted route sources (see the RydR plugin's Route Sources screen) and
+ * is gated server-side by ROUTE_MAPS_ADMIN_TOKEN at the API route level —
+ * never call this from anything that isn't already validating the caller.
+ * Runs the exact same field/point validation as submitRoute() (this is the
+ * "error check before saving" — a route that fails validation is rejected
+ * outright, never partially written), plus two checks specific to
+ * unreviewed, automated submissions: it must declare where it came from
+ * (sourceType "external" + a sourceUrl), and that source URL must not
+ * already be in the catalog, so a source misconfigured to re-scrape the
+ * same page can't spam duplicate entries with nothing to catch it.
+ */
+export async function directAddRoute(input: RouteSubmissionInput): Promise<{ id: string }> {
+  const { entry, points } = parseRouteSubmission(input);
+
+  if (entry.sourceType !== "external" || !entry.sourceUrl) {
+    throw new RouteValidationError(
+      'Direct-add submissions must include sourceType "external" and a sourceUrl, so an unreviewed entry always stays traceable to where it came from.'
+    );
+  }
+
+  return withRetry(async () => {
+    const index = await currentIndex();
+    if (index.some((e) => e.sourceUrl && e.sourceUrl === entry.sourceUrl)) {
+      throw new RouteValidationError("A route from this source URL is already in the catalog.");
+    }
+
+    const id = `${slugify(entry.name) || "route"}-${Date.now()}`;
+    const entryFile = `data/route-maps/${id}/route.json`;
+    const fullEntry: RouteMapEntry = {
+      ...entry,
+      id,
+      entryFile,
+      status: "approved",
+      createdAt: new Date().toISOString(),
+      prUrl: "",
+    };
+
+    await commitFiles(`Add route (trusted source, no review): ${entry.name}`, [
+      { path: entryFile, content: JSON.stringify({ points }, null, 2) + "\n" },
+      { path: "data/route-maps/index.json", content: JSON.stringify([...index, fullEntry], null, 2) + "\n" },
+    ]);
+
+    return { id };
   });
 }

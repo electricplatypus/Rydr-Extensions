@@ -75,6 +75,18 @@ async function fetchJsonFile<T>(path: string, fallback: T): Promise<T> {
   return JSON.parse(content) as T;
 }
 
+/** Same as fetchJsonFile, but reads from an arbitrary ref (branch/sha) instead of the configured base branch. */
+export async function fetchJsonFileOnRef<T>(path: string, ref: string, fallback: T): Promise<T> {
+  const { owner, name } = githubConfig();
+  const { status, body } = await ghRaw(`/repos/${owner}/${name}/contents/${encodePath(path)}?ref=${encodeURIComponent(ref)}`);
+  if (status === 404) return fallback;
+  if (status < 200 || status >= 300) {
+    throw new GithubApiError(status, `GitHub API fetch of ${path}@${ref} failed: ${status} ${JSON.stringify(body)}`);
+  }
+  const content = Buffer.from((body as { content: string }).content, "base64").toString("utf-8");
+  return JSON.parse(content) as T;
+}
+
 /** Live download counts, keyed by "<category>/<id>" — see getDownloadCounts. */
 export type DownloadCounts = Record<string, number>;
 
@@ -235,4 +247,75 @@ export async function openPullRequest(params: PullRequestParams): Promise<{ numb
     }),
   });
   return { number: pr.number, url: pr.html_url };
+}
+
+export interface PullRequestSummary {
+  number: number;
+  title: string;
+  body: string;
+  url: string;
+  headRef: string;
+  headSha: string;
+  merged: boolean;
+  createdAt: string;
+}
+
+function toPullRequestSummary(pr: Record<string, any>): PullRequestSummary {
+  return {
+    number: pr.number,
+    title: pr.title,
+    body: pr.body || "",
+    url: pr.html_url,
+    headRef: pr.head.ref,
+    headSha: pr.head.sha,
+    merged: !!pr.merged_at,
+    createdAt: pr.created_at,
+  };
+}
+
+/** Lists open pull requests whose head branch starts with `headPrefix` — used to find pending route submissions. */
+export async function listOpenPullRequests(headPrefix: string): Promise<PullRequestSummary[]> {
+  const { owner, name } = githubConfig();
+  const prs = (await gh(`/repos/${owner}/${name}/pulls?state=open&per_page=100`)) as unknown as Record<string, any>[];
+  return prs.filter((pr) => (pr.head?.ref || "").startsWith(headPrefix)).map(toPullRequestSummary);
+}
+
+export async function getPullRequest(number: number): Promise<PullRequestSummary> {
+  const { owner, name } = githubConfig();
+  const pr = await gh(`/repos/${owner}/${name}/pulls/${number}`);
+  return toPullRequestSummary(pr);
+}
+
+/** Merges a pull request. Throws GithubApiError (409) if it isn't mergeable right now. */
+export async function mergePullRequest(number: number, method: "merge" | "squash" | "rebase" = "squash"): Promise<{ merged: boolean; sha: string }> {
+  const { owner, name } = githubConfig();
+  const result = await gh(`/repos/${owner}/${name}/pulls/${number}/merge`, {
+    method: "PUT",
+    body: JSON.stringify({ merge_method: method }),
+  });
+  return { merged: !!result.merged, sha: result.sha };
+}
+
+/** Closes a pull request without merging, optionally leaving a comment explaining why. */
+export async function closePullRequest(number: number, comment?: string): Promise<void> {
+  const { owner, name } = githubConfig();
+  if (comment) {
+    await gh(`/repos/${owner}/${name}/issues/${number}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ body: comment }),
+    });
+  }
+  await gh(`/repos/${owner}/${name}/pulls/${number}`, {
+    method: "PATCH",
+    body: JSON.stringify({ state: "closed" }),
+  });
+}
+
+/** Deletes a branch — used to clean up a route-submission branch after it's closed or merged. Best-effort: swallows 404/422 (already gone). */
+export async function deleteBranch(branchName: string): Promise<void> {
+  const { owner, name } = githubConfig();
+  const { status } = await ghRaw(`/repos/${owner}/${name}/git/refs/heads/${encodeURIComponent(branchName)}`, { method: "DELETE" });
+  if (status !== 204 && status !== 404 && status !== 422) {
+    throw new GithubApiError(status, `Failed to delete branch ${branchName}: ${status}`);
+  }
 }
