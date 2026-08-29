@@ -117,5 +117,29 @@
     "status": "approved",
     "createdAt": "2026-08-29T20:15:45.967Z",
     "prUrl": ""
+  },
+  {
+    "id": "blue-ridge-parkway-1788034801576",
+    "name": "Blue Ridge Parkway",
+    "description": "To start on the north or upper half, go Staunton VA on interstate 81 and then head east on interstate 64 towards Waynesboro or Afton VA. Look for and follow the Blue Ridge Parkway signs. To start in the middle you should go to Wytheville VA on I-81 and then get on I-77 heading southeast toward the town of Fancy Gap VA (its exit #8 off of I-77). Look for the Blue Ridge parkway signs. Or to start at the lower/southern end (and then heading north) go to the town of Cherokee (just southeast of the Great Smoky Mountain National Park) or you can get on the Blue Ridge Parkway in Asheville NC as well.",
+    "category": "scenic",
+    "region": "Virginia",
+    "author": "Ess Gee",
+    "sourceType": "external",
+    "sourceUrl": "https://www.motorcycleroads.com/motorcycle-roads/virginia/blue-ridge-parkway?s=82",
+    "distanceMi": 351.9,
+    "pointCount": 224,
+    "tags": [
+      "Mountains",
+      "Twisty",
+      "curvy",
+      "VA",
+      "NC",
+      "TN"
+    ],
+    "entryFile": "data/route-maps/blue-ridge-parkway-1788034801576/route.json",
+    "status": "pending",
+    "createdAt": "2026-08-29T20:20:01.671Z",
+    "prUrl": ""
   }
 ]
