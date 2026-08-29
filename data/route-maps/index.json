@@ -100,5 +100,22 @@
     "status": "approved",
     "createdAt": "2026-08-29T20:13:55.809Z",
     "prUrl": ""
+  },
+  {
+    "id": "skyline-drive-1788034545967",
+    "name": "Skyline Drive",
+    "description": "Skyline drive begins in Front Royal, VA which is about 80 miles west of Washington DC. Just hop on Skyline drive and take it south all the way through the Shenandoah National Park ... the end point is basically the town of Waynesboro, VA.\r\nFrom there you can either turn around and do this awesome road again or you could conveniently continue right on to the Blue Ridge Parkway (... another fan",
+    "category": "scenic",
+    "region": "Virginia",
+    "author": "Anonymous rider",
+    "sourceType": "external",
+    "sourceUrl": "https://www.motorcycleroads.com/motorcycle-roads/virginia/skyline-drive?s=95",
+    "distanceMi": 96.9,
+    "pointCount": 123,
+    "tags": [],
+    "entryFile": "data/route-maps/skyline-drive-1788034545967/route.json",
+    "status": "approved",
+    "createdAt": "2026-08-29T20:15:45.967Z",
+    "prUrl": ""
   }
 ]
