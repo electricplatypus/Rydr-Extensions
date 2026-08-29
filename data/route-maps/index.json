@@ -83,5 +83,22 @@
     "status": "pending",
     "createdAt": "2026-08-29T19:46:31.577Z",
     "prUrl": ""
+  },
+  {
+    "id": "back-of-the-dragon-1788034435809",
+    "name": "Back of the Dragon",
+    "description": "If you're starting from the North, you will start in Tazewell, VA and simply head Southwest on US Business 19 for about 2-miles and then turn south (take a left) on to VA Route 16 where the fun begins.  Continue heading South for about 30-miles and you will come to the route's end as you arrive in Marion, VA.  \r\n\r\nBeginning in Marion, VA, the Back of the Dragon takes you through 438 curves over 32 miles of breathtaking scenery, ending in the small town of Tazewell, VA. Here you will find the Back of the Dragon Welcome Center, as well as local breweries, restaurants, and a nearby Amish community.",
+    "category": "scenic",
+    "region": "Virginia",
+    "author": "Anonymous rider",
+    "sourceType": "external",
+    "sourceUrl": "https://www.motorcycleroads.com/motorcycle-roads/virginia/back-of-the-dragon?s=95",
+    "distanceMi": 31.6,
+    "pointCount": 330,
+    "tags": [],
+    "entryFile": "data/route-maps/back-of-the-dragon-1788034435809/route.json",
+    "status": "approved",
+    "createdAt": "2026-08-29T20:13:55.809Z",
+    "prUrl": ""
   }
 ]
