@@ -158,5 +158,22 @@
     "status": "approved",
     "createdAt": "2026-08-30T14:23:51.794Z",
     "prUrl": ""
+  },
+  {
+    "id": "the-secret-blue-ridge-mountain-northern-stretch-1788099933706",
+    "name": "The Secret Blue-Ridge Mountain Northern Stretch",
+    "description": "This route is easy to find and follow. You'll find the starting point in town about 15 minuets west of Leesburg, VA called Bluemont, VA. At the intersection of route 7 and route 601 just take route 601 southwest. Immediately the 601 will climb to the spine of the mountains and you just stay on this all the way till it ends when it drops down out off the mountain and runs into US Highway 50.",
+    "category": "scenic",
+    "region": "Virginia",
+    "author": "Anonymous rider",
+    "sourceType": "external",
+    "sourceUrl": "https://www.motorcycleroads.com/motorcycle-roads/virginia/the-secret-blue-ridge-mountain-northern-stretch?s=95",
+    "distanceMi": 10.8,
+    "pointCount": 154,
+    "tags": [],
+    "entryFile": "data/route-maps/the-secret-blue-ridge-mountain-northern-stretch-1788099933706/route.json",
+    "status": "approved",
+    "createdAt": "2026-08-30T14:25:33.706Z",
+    "prUrl": ""
   }
 ]
