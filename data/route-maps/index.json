@@ -209,5 +209,22 @@
     "status": "approved",
     "createdAt": "2026-08-30T14:33:23.034Z",
     "prUrl": ""
+  },
+  {
+    "id": "us-221-independence-va-to-boone-nc-1788100562856",
+    "name": "US 221 - Independence, VA to Boone, NC",
+    "description": "We took this route on a recent visit to Boone, NC. We drove in pulling our Gold Wing, and returned later in the week to ride it. From Independence, VA follow US 221 for approximately 56 miles into Boone, NC. The road is miles and miles of sweeping curves and incredible views of the evergreen farms and the New River. The speed limit is 55 throughout most of the route, but we barely got above 45 most of the time. US 221 merges with US 421 near Boone. Take this route to get to the Blue Ridge Parkway outside of Boone.",
+    "category": "scenic",
+    "region": "North Carolina",
+    "author": "Anonymous rider",
+    "sourceType": "external",
+    "sourceUrl": "https://www.motorcycleroads.com/motorcycle-roads/north-carolina/us-221-independence-va-to-boone-nc?s=95",
+    "distanceMi": 55.2,
+    "pointCount": 313,
+    "tags": [],
+    "entryFile": "data/route-maps/us-221-independence-va-to-boone-nc-1788100562856/route.json",
+    "status": "approved",
+    "createdAt": "2026-08-30T14:36:02.856Z",
+    "prUrl": ""
   }
 ]
