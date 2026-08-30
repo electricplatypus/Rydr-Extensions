@@ -175,5 +175,22 @@
     "status": "approved",
     "createdAt": "2026-08-30T14:25:33.706Z",
     "prUrl": ""
+  },
+  {
+    "id": "the-nickel-amp-dime-virginia-state-route-5-and-10-1788100322757",
+    "name": "The Nickel &amp; Dime (Virginia State Route 5 and 10)",
+    "description": "Williamsburg- James Tyler Rd. off of Rt199. Follow it out to Rt. 5 and then take a left. Take 5 all the way up to I295 or follow another 10 miles into Richmond for food and a break (back track to I295). Follow I295 to Hopewell exit. Follow through Hopewell and continue till you hit a T intersection. Take a right into Surry go straight through the fourway intersection. Follow that to the Jamestown Ferry. Take ferry back across to The Colonial Parkway and then down to Yorktown for a beer or icecream, suggest the Yorktown Pub on the waterfront. This is my favorite all day ride.",
+    "category": "scenic",
+    "region": "Virginia",
+    "author": "Anonymous rider",
+    "sourceType": "external",
+    "sourceUrl": "https://www.motorcycleroads.com/motorcycle-roads/virginia/the-nickel-dime-virginia-state-route-5-and-10?s=95",
+    "distanceMi": 154,
+    "pointCount": 235,
+    "tags": [],
+    "entryFile": "data/route-maps/the-nickel-amp-dime-virginia-state-route-5-and-10-1788100322757/route.json",
+    "status": "approved",
+    "createdAt": "2026-08-30T14:32:02.757Z",
+    "prUrl": ""
   }
 ]
