@@ -192,5 +192,22 @@
     "status": "approved",
     "createdAt": "2026-08-30T14:32:02.757Z",
     "prUrl": ""
+  },
+  {
+    "id": "woodbridge-va-to-seneca-rocks-wv-and-back-1788100403034",
+    "name": "Woodbridge, VA to Seneca Rocks, WV and Back",
+    "description": "- Off of I-95's exit 152 in Dumfries Virginia, you'll find VA SR-234. Start this route by heading north on VA SR-234 and drive about 15 miles on 234 and in to Manassas, VA. Look for the intersection of 234 and Wellington Rd/Richmond Ave.",
+    "category": "scenic",
+    "region": "Virginia",
+    "author": "Anonymous rider",
+    "sourceType": "external",
+    "sourceUrl": "https://www.motorcycleroads.com/motorcycle-roads/virginia/woodbridge-va-to-seneca-rocks-wv-and-back?s=95",
+    "distanceMi": 309.3,
+    "pointCount": 230,
+    "tags": [],
+    "entryFile": "data/route-maps/woodbridge-va-to-seneca-rocks-wv-and-back-1788100403034/route.json",
+    "status": "approved",
+    "createdAt": "2026-08-30T14:33:23.034Z",
+    "prUrl": ""
   }
 ]
