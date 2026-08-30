@@ -141,5 +141,22 @@
     "status": "pending",
     "createdAt": "2026-08-29T20:20:01.671Z",
     "prUrl": ""
+  },
+  {
+    "id": "virginia-039-s-state-route-16-1788099831793",
+    "name": "Virginia&#039;s State Route 16",
+    "description": "Exit 45 on Interstate 81 in Virginia puts you right on route 16 and in the town of Marion, VA. From here you simply go north on route 16 which turns north off of U.S.11 as you follow it north out of Marion and is an awesome road. Take it about 35 miles all the way up to the town of Stony Ridge.  Continue on into West Virginia and check out The Berwind Lake Public Park (https://www.berwindlake.com/recreation.html) from about that point on Route 16 really snakes along as it hugs the river and takes you into the Route's end point in Yukon, WV.",
+    "category": "twisty",
+    "region": "Virginia",
+    "author": "Anonymous rider",
+    "sourceType": "external",
+    "sourceUrl": "https://www.motorcycleroads.com/motorcycle-roads/virginia/virginias-state-route-16?s=95",
+    "distanceMi": 54.2,
+    "pointCount": 316,
+    "tags": [],
+    "entryFile": "data/route-maps/virginia-039-s-state-route-16-1788099831793/route.json",
+    "status": "approved",
+    "createdAt": "2026-08-30T14:23:51.794Z",
+    "prUrl": ""
   }
 ]
