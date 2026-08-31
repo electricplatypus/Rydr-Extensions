@@ -20,7 +20,7 @@
 (function (root) {
   const PLUGIN_ID = "weather-command";
   const SETTINGS_KEY = "rydr_weather_command_settings";
-  const DEFAULT_SETTINGS = { hourlyHours: 24, radarAutoplay: false, cardHourlyStrip: true };
+  const DEFAULT_SETTINGS = { hourlyHours: 24, radarAutoplay: false, cardHourlyStrip: true, hourlyView: "icons" };
 
   function getSettings() {
     try {
@@ -30,6 +30,7 @@
         hourlyHours: [12, 24, 48].includes(Number(p.hourlyHours)) ? Number(p.hourlyHours) : DEFAULT_SETTINGS.hourlyHours,
         radarAutoplay: p.radarAutoplay === true,
         cardHourlyStrip: p.cardHourlyStrip !== false,
+        hourlyView: ["icons", "list"].includes(p.hourlyView) ? p.hourlyView : DEFAULT_SETTINGS.hourlyView,
       };
     } catch (e) {
       return { ...DEFAULT_SETTINGS };
@@ -221,6 +222,21 @@
   function emoji(code) {
     return typeof RydRUtils !== "undefined" ? RydRUtils.weatherEmoji(code) : "🌡️";
   }
+  // Short condition text for the Hourly tab's list view — hourlyPrecip()
+  // only gives back an OWM condition id per hour, not a description string
+  // the way current()/dailyForecast() do, so this fills that gap with the
+  // same id ranges weatherEmoji() itself groups by.
+  function conditionLabel(code) {
+    if (typeof code !== "number") return "";
+    if (code >= 200 && code < 300) return "Thunderstorms";
+    if (code >= 300 && code < 400) return "Drizzle";
+    if (code >= 500 && code < 600) return "Rain";
+    if (code >= 600 && code < 700) return "Snow";
+    if (code >= 700 && code < 800) return "Fog / Haze";
+    if (code === 800) return "Clear";
+    if (code > 800) return "Clouds";
+    return "";
+  }
   function toMph(speed) {
     return units() === "metric" && typeof RydRUtils !== "undefined" ? RydRUtils.msToMph(speed) : speed;
   }
@@ -345,6 +361,13 @@
       ".wxc-hour-i{font-size:20px;}",
       ".wxc-hour-v{font-family:var(--font-mono);font-weight:700;font-size:14px;}",
       ".wxc-hour-p{font-size:10px;color:var(--cyan);font-weight:600;}",
+
+      // ----- hourly tab header (title + icons/list view toggle) -----
+      ".wxc-panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px;}",
+      ".wxc-panel-head .wxc-section-title{margin:0;}",
+      ".wxc-view-toggle{display:flex;gap:2px;padding:2px;border-radius:9px;background:var(--bg-panel-raised);border:1px solid var(--border-subtle);flex-shrink:0;}",
+      ".wxc-view-btn{display:flex;align-items:center;justify-content:center;min-width:32px;min-height:28px;padding:0 8px;border-radius:7px;border:none;background:none;color:var(--text-muted);font-size:14px;cursor:pointer;}",
+      ".wxc-view-btn.active{background:var(--bg-panel-hover);color:var(--text-primary);box-shadow:0 0 0 1px var(--border-strong);}",
 
       // ----- daily list -----
       ".wxc-day-row{display:flex;align-items:center;gap:10px;padding:12px 4px;border-bottom:1px solid var(--border-subtle);cursor:pointer;}",
@@ -584,11 +607,8 @@
   }
 
   // ---------- Hourly ----------
-  function renderHourlyPanel(panel) {
-    const hourly = state.hourly.data;
-    if (!Array.isArray(hourly) || !hourly.length) { panel.innerHTML = statusHtml(state.hourly._lastReason || "empty"); return; }
-    panel.innerHTML = `
-      <div class="wxc-section-title">Next ${hourly.length} Hours</div>
+  function renderHourlyIconGrid(hourly) {
+    return `
       <div class="wxc-hourly-row" style="flex-wrap:wrap;">
         ${hourly.map((h) => `
           <div class="wxc-hour-card">
@@ -599,6 +619,48 @@
           </div>`).join("")}
       </div>
     `;
+  }
+
+  // Mirrors the 3-Day/7-Day tabs' row markup (.wxc-day-row and friends)
+  // exactly, keyed by hour instead of by day — no expand chevron, since
+  // hourlyPrecip() has no per-hour sub-detail the way dailyForecast()'s
+  // `entries` gives each day.
+  function renderHourlyListRows(hourly) {
+    return `
+      <div class="wxc-day-list">
+        ${hourly.map((h) => `
+          <div class="wxc-day-row" style="cursor:default;">
+            <div class="wxc-day-name">${esc(fmtHour(h.time))}</div>
+            <div class="wxc-day-icon">${emoji(h.iconCode)}</div>
+            <div class="wxc-day-desc">${esc(conditionLabel(h.iconCode))}</div>
+            <div class="wxc-day-pop">${h.pop ? h.pop + "%" : ""}</div>
+            <div class="wxc-day-temps">${Math.round(h.temp)}°</div>
+          </div>`).join("")}
+      </div>
+    `;
+  }
+
+  function renderHourlyPanel(panel) {
+    const hourly = state.hourly.data;
+    if (!Array.isArray(hourly) || !hourly.length) { panel.innerHTML = statusHtml(state.hourly._lastReason || "empty"); return; }
+    const view = getSettings().hourlyView;
+    panel.innerHTML = `
+      <div class="wxc-panel-head">
+        <div class="wxc-section-title">Next ${hourly.length} Hours</div>
+        <div class="wxc-view-toggle" role="tablist" aria-label="Hourly view style">
+          <button type="button" class="wxc-view-btn${view === "icons" ? " active" : ""}" data-hourly-view="icons" title="Icon view" aria-label="Icon view">▦</button>
+          <button type="button" class="wxc-view-btn${view === "list" ? " active" : ""}" data-hourly-view="list" title="List view" aria-label="List view">☰</button>
+        </div>
+      </div>
+      ${view === "list" ? renderHourlyListRows(hourly) : renderHourlyIconGrid(hourly)}
+    `;
+    panel.querySelectorAll("[data-hourly-view]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (btn.dataset.hourlyView === getSettings().hourlyView) return;
+        saveSettings({ ...getSettings(), hourlyView: btn.dataset.hourlyView });
+        renderHourlyPanel(panel);
+      });
+    });
   }
 
   // ---------- Daily (3-day / 7-day, shared renderer) ----------
@@ -1058,7 +1120,7 @@
     id: PLUGIN_ID,
     name: "Weather Command",
     description: "One weather plugin for everything: current conditions, hour-by-hour and 3/7-day forecasts, local radar, active NWS watches & warnings, and a motorcycle-specific riding conditions score.",
-    version: "1.0.0",
+    version: "1.1.0",
     icon: "🌦️",
     category: "weather",
     standalone: true,
