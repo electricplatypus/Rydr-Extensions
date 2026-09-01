@@ -226,5 +226,22 @@
     "status": "approved",
     "createdAt": "2026-08-30T14:36:02.856Z",
     "prUrl": ""
+  },
+  {
+    "id": "johnny-appleseed-historic-byway-1788257205842",
+    "name": "Johnny Appleseed Historic Byway",
+    "description": "Take Ohio state road 39 east out of Mansfield and follow it southeast through Lucas and Perrysville to Loudonville.",
+    "category": "scenic",
+    "region": "Ohio",
+    "author": "Anonymous rider",
+    "sourceType": "external",
+    "sourceUrl": "https://www.motorcycleroads.com/motorcycle-roads/ohio/johnny-appleseed-historic-byway?s=32",
+    "distanceMi": 20.1,
+    "pointCount": 358,
+    "tags": [],
+    "entryFile": "data/route-maps/johnny-appleseed-historic-byway-1788257205842/route.json",
+    "status": "approved",
+    "createdAt": "2026-09-01T10:06:45.842Z",
+    "prUrl": ""
   }
 ]
