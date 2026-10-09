@@ -15,8 +15,7 @@
 // THEMES below is a small, self-contained accent-color registry — "default"
 // (Apex Blue) is a literal copy of the app's own --neon-green/--cyan
 // tokens so an unthemed rider sees Telemetry Studio blend right into the
-// rest of RydR, plus two real alternate accents (Circuit Emerald, Ember
-// Track). Applied by writing --tls-accent/--tls-accent-dim/--tls-glow as
+// rest of RydR. Applied by writing --tls-accent/--tls-accent-dim/--tls-glow as
 // inline custom properties on this plugin's own root elements (read by
 // this file's CSS in css/style.css, and by the Three.js scene for its
 // material colors) — never anything global. Persisted alongside the rest
@@ -27,8 +26,6 @@
 
   const THEMES = {
     default: { id: "default", label: "Apex Blue", accent: "#4f8cff", accentDim: "#2c5fc7", glow: "rgba(79,140,255,0.30)" },
-    emerald: { id: "emerald", label: "Circuit Emerald", accent: "#10b981", accentDim: "#059669", glow: "rgba(16,185,129,0.30)" },
-    ember: { id: "ember", label: "Ember Track", accent: "#f97316", accentDim: "#c2410c", glow: "rgba(249,115,22,0.30)" },
   };
   const DEFAULT_SETTINGS = {
     theme: "default",
@@ -37,47 +34,9 @@
     showFrictionCircle: true,
     showSparkline: true,
     autoPlay: true,
-    showMap: true,
-    mapStyle: "dark",
-    frictionRange: "auto",
   };
 
-  // ---------- map styles: keyless raster tile sources (no API key, no
-  // server-side proxy needed), swappable from the map's gear panel. ----------
-  const CARTO_SUBS = ["a", "b", "c", "d"];
-  const cartoTiles = (name) => CARTO_SUBS.map((s) => `https://${s}.basemaps.cartocdn.com/${name}/{z}/{x}/{y}.png`);
-  const CARTO_ATTR = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>';
-  const MAP_STYLES = {
-    dark: { id: "dark", label: "Dark", tiles: cartoTiles("dark_all"), attribution: CARTO_ATTR, maxzoom: 19, preview: "#1b1f27" },
-    light: { id: "light", label: "Light", tiles: cartoTiles("light_all"), attribution: CARTO_ATTR, maxzoom: 19, preview: "#e9ecef" },
-    voyager: { id: "voyager", label: "Voyager", tiles: cartoTiles("rastertiles/voyager"), attribution: CARTO_ATTR, maxzoom: 19, preview: "#e8dfcf" },
-    streets: {
-      id: "streets",
-      label: "Streets",
-      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxzoom: 19,
-      preview: "#f2efe9",
-    },
-    satellite: {
-      id: "satellite",
-      label: "Satellite",
-      tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
-      attribution: "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics",
-      maxzoom: 19,
-      preview: "#2f4a3a",
-    },
-    topo: {
-      id: "topo",
-      label: "Topo",
-      tiles: ["a", "b", "c"].map((s) => `https://${s}.tile.opentopomap.org/{z}/{x}/{y}.png`),
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)',
-      maxzoom: 17,
-      preview: "#c8d9b0",
-    },
-  };
   // Friction-circle full-scale choices (g). "auto" fits the loaded ride.
-  const FRICTION_RANGES = ["auto", 0.25, 0.5, 0.75, 1];
   const FRICTION_AUTO_STEPS = [0.2, 0.3, 0.4, 0.5, 0.75, 1, 1.5, 2.5];
   const FRICTION_DEFAULT_G = 0.5;
 
@@ -86,15 +45,12 @@
       const raw = localStorage.getItem(SETTINGS_KEY);
       const p = raw ? JSON.parse(raw) : {};
       return {
-        theme: THEMES[p.theme] ? p.theme : DEFAULT_SETTINGS.theme,
+        theme: DEFAULT_SETTINGS.theme,
         show3D: p.show3D !== false,
         ambientMotion: p.ambientMotion !== false,
         showFrictionCircle: p.showFrictionCircle !== false,
         showSparkline: p.showSparkline !== false,
         autoPlay: p.autoPlay !== false,
-        showMap: p.showMap !== false,
-        mapStyle: MAP_STYLES[p.mapStyle] ? p.mapStyle : DEFAULT_SETTINGS.mapStyle,
-        frictionRange: FRICTION_RANGES.includes(p.frictionRange) ? p.frictionRange : DEFAULT_SETTINGS.frictionRange,
       };
     } catch (e) {
       return { ...DEFAULT_SETTINGS };
@@ -174,6 +130,31 @@
     return frames;
   }
 
+  // Canvas widgets sit on the app's own card background, which is dark in
+  // dark themes and white in light ones — pick ink colors by its luminance
+  // (cached briefly; getComputedStyle every frame is wasteful).
+  const INK_DARK = { ring: "#2a313b", axis: "#3a424d", label: "#8b949e", scale: "#59616d", value: "#c9d1d9", dot: "#ffffff" };
+  const INK_LIGHT = { ring: "#c4ccd6", axis: "#8a95a5", label: "#374151", scale: "#4b5563", value: "#111827", dot: "#111827" };
+  const inkCache = new WeakMap();
+  function inkFor(canvas) {
+    const now = performance.now();
+    const hit = inkCache.get(canvas);
+    if (hit && now - hit.at < 1000) return hit.ink;
+    let ink = INK_DARK;
+    try {
+      const host = canvas.closest(".tls-widget") || canvas;
+      const m = getComputedStyle(host).backgroundColor.match(/[\d.]+/g);
+      if (m && m.length >= 3 && (m[3] === undefined || Number(m[3]) > 0.5)) {
+        const lum = (0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2]) / 255;
+        if (lum > 0.6) ink = INK_LIGHT;
+      }
+    } catch (e) {
+      /* keep dark ink */
+    }
+    inkCache.set(canvas, { at: now, ink });
+    return ink;
+  }
+
   // ---------- Lean Angle Gauge (canvas arc gauge) ----------
   class LeanAngleGauge {
     constructor(canvas) {
@@ -193,7 +174,7 @@
       const h = this.canvas.height;
       const cx = w / 2;
       const cy = h - 22;
-      const radius = Math.min(w, h) * 0.42;
+      const radius = Math.min(w * 0.4, h - 34);
       const lean = typeof currentLean === "number" && Number.isFinite(currentLean) ? currentLean : 0;
 
       if (lean < -1) this.maxLeanLeft = Math.min(this.maxLeanLeft, lean);
@@ -236,7 +217,7 @@
       ctx.lineTo(px, py);
       ctx.stroke();
 
-      ctx.fillStyle = "#f0f6fc";
+      ctx.fillStyle = inkFor(this.canvas).dot;
       ctx.beginPath();
       ctx.arc(cx, cy, 5, 0, Math.PI * 2);
       ctx.fill();
@@ -275,20 +256,21 @@
       const h = this.canvas.height;
       const cx = w / 2;
       const cy = h / 2;
-      const radius = Math.min(w, h) / 2 - 26;
+      const radius = Math.min(w, h) / 2 - 32;
       const lat = Number.isFinite(gLat) ? gLat : 0;
       const lon = Number.isFinite(gLon) ? gLon : 0;
       const maxG = this.maxG > 0 ? this.maxG : FRICTION_DEFAULT_G;
 
+      const ink = inkFor(this.canvas);
       ctx.clearRect(0, 0, w, h);
       ctx.lineWidth = 1;
-      ctx.strokeStyle = "#2a313b";
+      ctx.strokeStyle = ink.ring;
       [0.25, 0.5, 0.75, 1.0].forEach((ratio) => {
         ctx.beginPath();
         ctx.arc(cx, cy, radius * ratio, 0, Math.PI * 2);
         ctx.stroke();
       });
-      ctx.strokeStyle = "#3a424d";
+      ctx.strokeStyle = ink.axis;
       ctx.beginPath();
       ctx.moveTo(cx, cy - radius);
       ctx.lineTo(cx, cy + radius);
@@ -296,16 +278,16 @@
       ctx.lineTo(cx + radius, cy);
       ctx.stroke();
 
-      ctx.fillStyle = "#8b949e";
-      ctx.font = "11px 'JetBrains Mono', monospace";
+      ctx.fillStyle = ink.label;
+      ctx.font = "15px 'JetBrains Mono', monospace";
       ctx.textAlign = "center";
-      ctx.fillText("BRAKE", cx, cy + radius + 16);
-      ctx.fillText("ACCEL", cx, cy - radius - 8);
+      ctx.fillText("BRAKE", cx, cy + radius + 20);
+      ctx.fillText("ACCEL", cx, cy - radius - 10);
       ctx.fillText("L", cx - radius - 12, cy + 4);
       ctx.fillText("R", cx + radius + 12, cy + 4);
       // ring scale (g) along the lower-right diagonal so it never sits on an axis
-      ctx.fillStyle = "#59616d";
-      ctx.font = "9px 'JetBrains Mono', monospace";
+      ctx.fillStyle = ink.scale;
+      ctx.font = "12px 'JetBrains Mono', monospace";
       [0.5, 1.0].forEach((ratio) => {
         const d = (radius * ratio) / Math.SQRT2;
         ctx.fillText(`${(maxG * ratio).toFixed(maxG * ratio < 1 ? 2 : 1)}g`, cx + d + 12, cy + d + 4);
@@ -342,11 +324,11 @@
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
-      ctx.fillStyle = "#c9d1d9";
-      ctx.font = "11px 'JetBrains Mono', monospace";
+      ctx.fillStyle = ink.value;
+      ctx.font = "15px 'JetBrains Mono', monospace";
       ctx.textAlign = "left";
-      ctx.fillText(`LAT ${lat.toFixed(2)}g`, 6, 14);
-      ctx.fillText(`LON ${lon.toFixed(2)}g`, 6, 28);
+      ctx.fillText(`LAT ${lat.toFixed(2)}g`, 6, 18);
+      ctx.fillText(`LON ${lon.toFixed(2)}g`, 6, 36);
     }
   }
 
@@ -424,7 +406,7 @@
   // bounding-box center (±0.63 x, ±0.80 y, ±1.0 z). Scaled so it reads at
   // the same size as the track ribbon it rides on.
   const BIKE_MODEL_URL = "/models/rider-bike.glb";
-  const BIKE_MODEL_SCALE = 4.8;
+  const BIKE_MODEL_SCALE = 3.8;
   const BIKE_MODEL_HALF_HEIGHT = 0.8024;
   let threeCorePromise = null;
   let threeCoreUrl = null;
@@ -678,170 +660,6 @@
     }
   }
 
-  // ---------- MapLibre loader (same CDN-tiered fallback as
-  // plugins/chase-cam-3d/chase-cam-3d.js: unpkg -> jsdelivr -> vendor copy) ----------
-  const MAPLIBRE_VERSION = "4.7.1";
-  const MAPLIBRE_CSS_URLS = [
-    `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.css`,
-    `https://cdn.jsdelivr.net/npm/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.css`,
-    "/vendor/maplibre-gl/maplibre-gl.css",
-  ];
-  const MAPLIBRE_JS_URLS = [
-    `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.js`,
-    `https://cdn.jsdelivr.net/npm/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.js`,
-    "/vendor/maplibre-gl/maplibre-gl.js",
-  ];
-  function loadTag(el) {
-    return new Promise((resolve, reject) => {
-      el.onload = () => resolve();
-      el.onerror = () => reject(new Error(`failed to load ${el.src || el.href}`));
-      document.head.appendChild(el);
-    });
-  }
-  async function loadFirst(urls, make) {
-    let lastErr;
-    for (const url of urls) {
-      const el = make(url);
-      try {
-        await loadTag(el);
-        return;
-      } catch (err) {
-        el.remove();
-        lastErr = err;
-      }
-    }
-    throw lastErr;
-  }
-  let maplibrePromise = null;
-  function ensureMapLibre() {
-    if (window.maplibregl) return Promise.resolve();
-    if (maplibrePromise) return maplibrePromise;
-    maplibrePromise = (async () => {
-      await loadFirst(MAPLIBRE_CSS_URLS, (href) => {
-        const l = document.createElement("link");
-        l.rel = "stylesheet";
-        l.href = href;
-        return l;
-      }).catch(() => {}); // cosmetic only — map still works unstyled controls aside
-      await loadFirst(MAPLIBRE_JS_URLS, (src) => {
-        const sc = document.createElement("script");
-        sc.src = src;
-        return sc;
-      });
-    })().catch((err) => {
-      maplibrePromise = null;
-      throw err;
-    });
-    return maplibrePromise;
-  }
-
-  // ---------- 2D route map: the recorded ride's real lat/lng polyline plus a
-  // marker following the replay position. Basemap swapped via setStyle(). ----------
-  class RideMap {
-    constructor(container, dbg) {
-      this.container = container;
-      this.dbg = dbg;
-      this.map = null;
-      this.marker = null;
-      this.frames = null;
-      this.styleId = "dark";
-      this.accent = "#4f8cff";
-      this._ro = null;
-      this._destroyed = false;
-    }
-    _styleSpec(id) {
-      const st = MAP_STYLES[id] || MAP_STYLES.dark;
-      return {
-        version: 8,
-        sources: {
-          base: { type: "raster", tiles: st.tiles, tileSize: 256, maxzoom: st.maxzoom, attribution: st.attribution },
-        },
-        layers: [
-          { id: "bg", type: "background", paint: { "background-color": st.preview } },
-          { id: "base", type: "raster", source: "base" },
-        ],
-      };
-    }
-    async init(styleId) {
-      await ensureMapLibre();
-      if (this._destroyed) return;
-      this.styleId = MAP_STYLES[styleId] ? styleId : "dark";
-      const maplibregl = window.maplibregl;
-      this.map = new maplibregl.Map({
-        container: this.container,
-        style: this._styleSpec(this.styleId),
-        center: [0, 0],
-        zoom: 1,
-        attributionControl: { compact: true },
-      });
-      this.map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
-      const el = document.createElement("div");
-      el.className = "tls-map-marker";
-      this.marker = new maplibregl.Marker({ element: el });
-      this.map.on("style.load", () => this._drawRoute());
-      this._ro = new ResizeObserver(() => this.map && this.map.resize());
-      this._ro.observe(this.container);
-    }
-    setStyle(id) {
-      if (!MAP_STYLES[id] || id === this.styleId) return;
-      this.styleId = id;
-      if (this.map) this.map.setStyle(this._styleSpec(id));
-    }
-    setAccent(hex) {
-      this.accent = hex;
-      if (this.map && this.map.getLayer("route")) this.map.setPaintProperty("route", "line-color", hex);
-    }
-    setFrames(frames) {
-      this.frames = frames && frames.length >= 2 ? frames : null;
-      if (!this.map) return;
-      if (this.map.isStyleLoaded()) this._drawRoute();
-      this._fit();
-    }
-    _drawRoute() {
-      const map = this.map;
-      if (!map || this._destroyed) return;
-      ["route", "route-casing"].forEach((id) => map.getLayer(id) && map.removeLayer(id));
-      if (map.getSource("route")) map.removeSource("route");
-      if (!this.frames) {
-        this.marker.remove();
-        return;
-      }
-      map.addSource("route", {
-        type: "geojson",
-        data: { type: "Feature", geometry: { type: "LineString", coordinates: this.frames.map((f) => [f.lng, f.lat]) } },
-      });
-      map.addLayer({ id: "route-casing", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#000000", "line-opacity": 0.55, "line-width": 8 } });
-      map.addLayer({ id: "route", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": this.accent, "line-width": 4.5 } });
-      this.setPosition(this._lastIndex || 0);
-    }
-    _fit() {
-      if (!this.map || !this.frames) return;
-      const b = new window.maplibregl.LngLatBounds();
-      this.frames.forEach((f) => b.extend([f.lng, f.lat]));
-      this.map.resize();
-      this.map.fitBounds(b, { padding: 36, duration: 0, maxZoom: 17 });
-    }
-    setPosition(index) {
-      this._lastIndex = index;
-      if (!this.map || !this.frames) return;
-      const f = this.frames[RydRUtils.clamp(index, 0, this.frames.length - 1)];
-      if (!f) return;
-      this.marker.setLngLat([f.lng, f.lat]);
-      this.marker.addTo(this.map);
-    }
-    resize() {
-      if (!this.map) return;
-      this.map.resize();
-      this._fit();
-    }
-    destroy() {
-      this._destroyed = true;
-      if (this._ro) this._ro.disconnect();
-      if (this.map) this.map.remove();
-      this.map = null;
-    }
-  }
-
   // ==========================================================================
   // Dashboard card — compact live readout (real telemetry: RydROrientation
   // for lean, payload.telemetry for speed), tapping it opens the full
@@ -869,7 +687,6 @@
     scene: null,
     gauge: null,
     friction: null,
-    rideMap: null,
     autoRange: FRICTION_DEFAULT_G,
     sparkline: null,
     settings: null,
@@ -924,20 +741,6 @@
             </div>
           </div>
 
-          <div class="tls-map-wrap" id="tlsMapWrap">
-            <div class="tls-map" id="tlsMap"></div>
-            <button type="button" class="tls-gear-btn" id="tlsGearBtn" aria-label="Map quick settings" aria-haspopup="true" aria-expanded="false">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
-            </button>
-            <div class="tls-qs-panel" id="tlsQsPanel" role="dialog" aria-label="Quick settings" hidden>
-              <div class="tls-qs-title">Map style</div>
-              <div class="tls-qs-styles" id="tlsQsStyles"></div>
-              <div class="tls-qs-title">Friction circle range</div>
-              <div class="tls-qs-ranges" id="tlsQsRanges"></div>
-            </div>
-            <div class="tls-map-msg" id="tlsMapMsg" hidden>Map unavailable</div>
-          </div>
-
           <div class="tls-transport" id="tlsTransport">
             <button type="button" class="tls-play-btn" id="tlsPlayBtn" aria-label="Play">▶</button>
             <input type="range" id="tlsScrub" class="tls-scrub" min="0" max="100" value="0" step="0.1" />
@@ -972,13 +775,6 @@
       liveBadge: rootEl.querySelector("#tlsLiveBadge"),
       speedVal: rootEl.querySelector("#tlsSpeedVal"),
       leanVal: rootEl.querySelector("#tlsLeanVal"),
-      mapWrap: rootEl.querySelector("#tlsMapWrap"),
-      map: rootEl.querySelector("#tlsMap"),
-      mapMsg: rootEl.querySelector("#tlsMapMsg"),
-      gearBtn: rootEl.querySelector("#tlsGearBtn"),
-      qsPanel: rootEl.querySelector("#tlsQsPanel"),
-      qsStyles: rootEl.querySelector("#tlsQsStyles"),
-      qsRanges: rootEl.querySelector("#tlsQsRanges"),
       transport: rootEl.querySelector("#tlsTransport"),
       playBtn: rootEl.querySelector("#tlsPlayBtn"),
       scrub: rootEl.querySelector("#tlsScrub"),
@@ -998,83 +794,12 @@
     if (els.frictionWidget) els.frictionWidget.hidden = !s.showFrictionCircle;
     if (els.sparkWidget) els.sparkWidget.hidden = !s.showSparkline;
     if (els.scene) els.scene.parentElement.hidden = !s.show3D;
-    if (els.mapWrap) {
-      els.mapWrap.hidden = !s.showMap || screenState.mode === "live";
-      if (!els.mapWrap.hidden && screenState.rideMap) screenState.rideMap.resize();
-    }
   }
 
-  // ---------- quick-settings (gear) panel: map style + friction range ----------
-  function effectiveFrictionRange() {
-    const r = screenState.settings.frictionRange;
-    if (r === "auto") return screenState.mode === "recorded" && screenState.frames.length ? screenState.autoRange : FRICTION_DEFAULT_G;
-    return r;
-  }
+  // Friction-circle full scale: fits the loaded ride (auto), else the default.
   function applyFrictionRange() {
-    if (screenState.friction) screenState.friction.maxG = effectiveFrictionRange();
-  }
-  function redrawFriction() {
     if (!screenState.friction) return;
-    if (screenState.mode === "recorded" && screenState.frames.length) renderFrameAt(screenState.index);
-  }
-  function renderQuickSettings() {
-    const { qsStyles, qsRanges } = screenState.els;
-    const s = screenState.settings;
-    qsStyles.innerHTML = Object.values(MAP_STYLES)
-      .map(
-        (m) => `<button type="button" class="tls-qs-style${m.id === s.mapStyle ? " selected" : ""}" data-style="${m.id}" aria-pressed="${m.id === s.mapStyle}">
-          <span class="tls-qs-swatch" style="background:${m.preview};"></span>${RydRUtils.escapeHtml(m.label)}</button>`
-      )
-      .join("");
-    qsRanges.innerHTML = FRICTION_RANGES.map((r) => {
-      const label = r === "auto" ? "Auto" : `${r}g`;
-      return `<button type="button" class="tls-qs-range${r === s.frictionRange ? " selected" : ""}" data-range="${r}" aria-pressed="${r === s.frictionRange}">${label}</button>`;
-    }).join("");
-  }
-  function setQuickSettingsOpen(open) {
-    const { qsPanel, gearBtn } = screenState.els;
-    qsPanel.hidden = !open;
-    gearBtn.setAttribute("aria-expanded", String(open));
-  }
-  function wireQuickSettings() {
-    const els = screenState.els;
-    els.gearBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      setQuickSettingsOpen(els.qsPanel.hidden);
-    });
-    els.qsPanel.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const styleBtn = e.target.closest("[data-style]");
-      const rangeBtn = e.target.closest("[data-range]");
-      if (styleBtn && MAP_STYLES[styleBtn.dataset.style]) {
-        screenState.settings = saveSettings({ ...getSettings(), mapStyle: styleBtn.dataset.style });
-        if (screenState.rideMap) screenState.rideMap.setStyle(screenState.settings.mapStyle);
-      } else if (rangeBtn) {
-        const raw = rangeBtn.dataset.range;
-        const val = raw === "auto" ? "auto" : Number(raw);
-        if (!FRICTION_RANGES.includes(val)) return;
-        screenState.settings = saveSettings({ ...getSettings(), frictionRange: val });
-        applyFrictionRange();
-        redrawFriction();
-      } else {
-        return;
-      }
-      renderQuickSettings();
-    });
-    const close = (e) => {
-      if (!els.root.isConnected) {
-        document.removeEventListener("click", close);
-        document.removeEventListener("keydown", onKey);
-        return;
-      }
-      if (!els.qsPanel.hidden && !els.qsPanel.contains(e.target)) setQuickSettingsOpen(false);
-    };
-    const onKey = (e) => {
-      if (e.key === "Escape" && !els.qsPanel.hidden) setQuickSettingsOpen(false);
-    };
-    document.addEventListener("click", close);
-    document.addEventListener("keydown", onKey);
-    renderQuickSettings();
+    screenState.friction.maxG = screenState.mode === "recorded" && screenState.frames.length ? screenState.autoRange : FRICTION_DEFAULT_G;
   }
 
   async function populateRidePicker() {
@@ -1120,7 +845,6 @@
     screenState.trail = [];
     if (screenState.gauge) screenState.gauge.reset();
     if (screenState.scene) screenState.scene.setPathFrames(screenState.frames);
-    if (screenState.rideMap) screenState.rideMap.setFrames(screenState.frames);
     screenState.autoRange = computeAutoFrictionRange(screenState.frames);
     applyFrictionRange();
     updateScrubRange();
@@ -1145,7 +869,6 @@
     const els = screenState.els;
 
     if (screenState.scene) screenState.scene.setPathPosition(i);
-    if (screenState.rideMap) screenState.rideMap.setPosition(i);
     if (screenState.gauge) screenState.gauge.draw(f.roll);
 
     const windowStart = Math.max(0, i - TRAIL_LEN);
@@ -1163,6 +886,13 @@
   function startPlayback() {
     const frames = screenState.frames;
     if (!frames.length || screenState.mode !== "recorded") return;
+    // Pressing play after a replay finished restarts it from the beginning
+    // instead of ending again on the very next frame.
+    if (screenState.index >= frames.length - 1) {
+      screenState.index = 0;
+      screenState.trail = [];
+      if (screenState.gauge) screenState.gauge.reset();
+    }
     screenState.playing = true;
     screenState.els.playBtn.textContent = "❚❚";
     screenState.els.playBtn.setAttribute("aria-label", "Pause");
@@ -1269,7 +999,6 @@
     const step = (now) => {
       if (!screenState.els.root || !screenState.els.root.isConnected) {
         if (screenState.scene) screenState.scene.destroy();
-        if (screenState.rideMap) screenState.rideMap.destroy();
         return;
       }
       requestAnimationFrame(step);
@@ -1311,21 +1040,9 @@
 
   function renderSettingsTab(container) {
     const s = getSettings();
-    const themeButtons = Object.values(THEMES)
-      .map(
-        (t) => `
-        <button type="button" class="tls-theme-swatch${t.id === s.theme ? " selected" : ""}" data-theme-id="${t.id}"
-          style="--tls-accent:${t.accent};">
-          <span class="tls-theme-dot"></span>${RydRUtils.escapeHtml(t.label)}
-        </button>`
-      )
-      .join("");
     container.innerHTML = `
       <div class="panel-title" style="margin-bottom:8px;">Telemetry Studio</div>
-      <p class="modal-desc">3D ride-replay analytics — lean angle, friction circle, route map, and a speed/lean sparkline, driven by your own recorded rides.</p>
-
-      <div class="tls-settings-label">Theme</div>
-      <div class="tls-theme-row">${themeButtons}</div>
+      <p class="modal-desc">3D ride-replay analytics — lean angle, friction circle, and a speed/lean sparkline, driven by your own recorded rides.</p>
 
       <label class="settings-row">
         <span>3D scene</span>
@@ -1334,10 +1051,6 @@
       <label class="settings-row">
         <span>Ambient camera drift (idle)</span>
         <input type="checkbox" id="tlsAmbient" />
-      </label>
-      <label class="settings-row">
-        <span>Route map</span>
-        <input type="checkbox" id="tlsShowMap" />
       </label>
       <label class="settings-row">
         <span>Friction circle widget</span>
@@ -1359,29 +1072,10 @@
     `;
     container.querySelector("#tlsShow3D").checked = s.show3D;
     container.querySelector("#tlsAmbient").checked = s.ambientMotion;
-    container.querySelector("#tlsShowMap").checked = s.showMap;
     container.querySelector("#tlsShowFriction").checked = s.showFrictionCircle;
     container.querySelector("#tlsShowSpark").checked = s.showSparkline;
     container.querySelector("#tlsAutoPlay").checked = s.autoPlay;
 
-    container.querySelectorAll(".tls-theme-swatch").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const next = saveSettings({ ...getSettings(), theme: btn.dataset.themeId });
-        const accent = THEMES[next.theme].accent;
-        container.querySelectorAll(".tls-theme-swatch").forEach((b) => b.classList.toggle("selected", b === btn));
-        if (cardState.root) {
-          applyTheme(cardState.root, next.theme);
-          if (cardState.gauge) cardState.gauge.accent = accent;
-        }
-        if (screenState.els.root) {
-          applyTheme(screenState.els.root, next.theme);
-          if (screenState.gauge) screenState.gauge.accent = accent;
-          if (screenState.friction) screenState.friction.accent = accent;
-          if (screenState.rideMap) screenState.rideMap.setAccent(accent);
-          if (screenState.scene) screenState.scene.setAccent(parseInt(accent.slice(1), 16));
-        }
-      });
-    });
     const bindToggle = (id, key, after) =>
       container.querySelector(id).addEventListener("change", (e) => {
         const next = saveSettings({ ...getSettings(), [key]: e.target.checked });
@@ -1394,10 +1088,6 @@
     bindToggle("#tlsAmbient", "ambientMotion", (next) => {
       screenState.settings = next;
       if (screenState.scene) screenState.scene.ambientMotion = next.ambientMotion;
-    });
-    bindToggle("#tlsShowMap", "showMap", (next) => {
-      screenState.settings = next;
-      applyWidgetVisibility();
     });
     bindToggle("#tlsShowFriction", "showFrictionCircle", (next) => {
       screenState.settings = next;
@@ -1415,8 +1105,8 @@
   const plugin = {
     id: "telemetry-studio",
     name: "Telemetry Studio",
-    description: "A 3D ride-replay analytics view — lean angle, friction-circle g-force, a route map with selectable styles, and a speed/lean sparkline, synced to a real recorded ride (or live).",
-    version: "1.2.0",
+    description: "A 3D ride-replay analytics view — lean angle, friction-circle g-force, and a speed/lean sparkline, synced to a real recorded ride (or live).",
+    version: "1.2.3",
     icon: "🏍️",
     category: "performance",
     standalone: true,
@@ -1484,10 +1174,6 @@
       title: "🏍️ Telemetry Studio",
       render: function (container) {
         const dbg = screenState.dbg || (screenState.dbg = RydRDebugConsole.create({ id: "telemetry-studio-screen", title: "Telemetry Studio" }));
-        if (screenState.rideMap) {
-          screenState.rideMap.destroy();
-          screenState.rideMap = null;
-        }
         const rootEl = buildScreenSkeleton(container);
         container.appendChild(dbg.el);
         screenState.settings = getSettings();
@@ -1501,28 +1187,6 @@
         screenState.gauge.accent = THEMES[screenState.settings.theme].accent;
         screenState.friction.accent = THEMES[screenState.settings.theme].accent;
         applyFrictionRange();
-        wireQuickSettings();
-
-        dbg
-          .guardAsync(
-            (async () => {
-              screenState.rideMap = new RideMap(screenState.els.map, dbg);
-              screenState.rideMap.accent = THEMES[screenState.settings.theme].accent;
-              await screenState.rideMap.init(screenState.settings.mapStyle);
-              if (screenState.frames.length) {
-                screenState.rideMap.setFrames(screenState.frames);
-                screenState.rideMap.setPosition(screenState.index);
-              }
-            })(),
-            "RideMap init",
-            { rethrow: true }
-          )
-          .catch(() => {
-            dbg.warn("map unavailable — MapLibre failed to load");
-            screenState.rideMap = null;
-            screenState.els.map.hidden = true;
-            screenState.els.mapMsg.hidden = false;
-          });
 
         dbg
           .guardAsync(

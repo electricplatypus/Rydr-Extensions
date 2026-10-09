@@ -158,20 +158,19 @@
     "id": "telemetry-studio",
     "category": "plugins",
     "name": "Telemetry Studio",
-    "description": "A 3D ride-replay analytics view — lean angle, friction-circle g-force, a route map with selectable styles, and a speed/lean sparkline, synced to a real recorded ride (or live).",
+    "description": "A 3D ride-replay analytics view — lean angle, friction-circle g-force, and a speed/lean sparkline, synced to a real recorded ride (or live).",
     "author": "electricplatypus",
-    "version": "1.2.0",
+    "version": "1.2.3",
     "icon": "🏍️",
     "repo": "github.com/electricplatypus/rydr",
     "entryFile": "telemetry-studio.js",
     "rydrCategory": "performance",
     "createdAt": "2026-10-09T18:50:00.000Z",
-    "updatedAt": "2026-10-09T18:50:00.000Z",
+    "updatedAt": "2026-10-09T19:40:00.000Z",
     "downloads": 0,
     "tags": [
       "performance",
       "3d",
-      "map",
       "telemetry",
       "standalone"
     ]
