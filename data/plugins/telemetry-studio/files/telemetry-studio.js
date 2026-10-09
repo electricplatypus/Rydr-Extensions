@@ -77,6 +77,9 @@
   const MPH_PER_S_PER_G = 21.94;
   const MIN_DT_SEC = 0.25;
   const MAX_DT_SEC = 8;
+  // A stop or GPS dropout longer than this replays as this many seconds, so a
+  // long recording never sits frozen on one spot.
+  const MAX_REPLAY_GAP_SEC = 3;
 
   function computeLatG(leanDeg) {
     if (typeof leanDeg !== "number" || !Number.isFinite(leanDeg)) return 0;
@@ -103,6 +106,7 @@
     if (!Array.isArray(trackPoints) || trackPoints.length < 2) return [];
     const origin = trackPoints[0];
     const frames = [];
+    let clock = 0; // replay clock (s): real elapsed time, with long stops/gaps compressed
     for (let i = 0; i < trackPoints.length; i++) {
       const p = trackPoints[i];
       if (typeof p.lat !== "number" || typeof p.lng !== "number") continue;
@@ -124,7 +128,11 @@
           gLon = prev.gLon;
         }
       }
-      const tSec = (p.timestamp - origin.timestamp) / 1000;
+      if (i > 0) {
+        const gap = (p.timestamp - trackPoints[i - 1].timestamp) / 1000;
+        if (Number.isFinite(gap) && gap > 0) clock += Math.min(gap, MAX_REPLAY_GAP_SEC);
+      }
+      const tSec = clock;
       frames.push({ x, y, z, roll, speed, gLat, gLon, tSec, lat: p.lat, lng: p.lng });
     }
     return frames;
@@ -357,7 +365,13 @@
       const slice = frames.slice(start, currentIndex + 1);
       if (slice.length < 2) return;
 
-      const maxSpeed = Math.max(80, ...frames.map((f) => f.speed));
+      if (this._maxFor !== frames) {
+        let m = 80;
+        for (let i = 0; i < frames.length; i++) if (frames[i].speed > m) m = frames[i].speed;
+        this._maxFor = frames;
+        this._maxSpeed = m;
+      }
+      const maxSpeed = this._maxSpeed;
 
       ctx.lineWidth = 2;
       ctx.strokeStyle = "#10b981";
@@ -429,6 +443,39 @@
       throw err;
     });
     return threeCorePromise;
+  }
+
+  // Per-frame travel heading (radians, atan2(dx, dz)) from the real positions
+  // around each frame: look ahead to the first point >= 4 m away (else behind).
+  // Stationary frames inherit the previous heading.
+  function computeHeadings(frames) {
+    const out = new Array(frames.length).fill(0);
+    let prev = 0;
+    for (let i = 0; i < frames.length; i++) {
+      const f = frames[i];
+      let h = null;
+      for (let j = i + 1; j < frames.length && j <= i + 60; j++) {
+        const dx = frames[j].x - f.x;
+        const dz = frames[j].z - f.z;
+        if (dx * dx + dz * dz >= 16) {
+          h = Math.atan2(dx, dz);
+          break;
+        }
+      }
+      if (h === null) {
+        for (let j = i - 1; j >= 0 && j >= i - 60; j--) {
+          const dx = f.x - frames[j].x;
+          const dz = f.z - frames[j].z;
+          if (dx * dx + dz * dz >= 16) {
+            h = Math.atan2(dx, dz);
+            break;
+          }
+        }
+      }
+      prev = h === null ? prev : h;
+      out[i] = prev;
+    }
+    return out;
   }
 
   // ---------- 3D scene: a real-track ribbon (built from projectMeters()
@@ -579,36 +626,55 @@
         return;
       }
       this.mode = "path";
-      const pts = frames.map((f) => new THREE.Vector3(f.x, f.y, f.z));
-      this.curve = new THREE.CatmullRomCurve3(pts);
-      const segs = Math.max(20, Math.min(400, pts.length * 2));
-      const geometry = new THREE.TubeGeometry(this.curve, segs, 0.9, 8, false);
-      const material = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, emissive: 0x475569, roughness: 0.5, metalness: 0.2 });
-      this.trackMesh = new THREE.Mesh(geometry, material);
-      this.scene.add(this.trackMesh);
-    }
-
-    // frame: {x,y,z,roll} + tangent-derived heading, called on every replay tick.
-    setPathPosition(index) {
-      if (!this.THREE || this.mode !== "path" || !this.frames || !this.frames.length) return;
-      const i = RydRUtils.clamp(index, 0, this.frames.length - 1);
-      const f = this.frames[i];
-      const u = i / (this.frames.length - 1);
-      let heading = this._lastHeading || 0;
-      if (this.curve) {
-        const tangent = this.curve.getTangentAt(RydRUtils.clamp(u, 0, 1));
-        if (tangent.lengthSq() > 1e-6) {
-          heading = Math.atan2(tangent.x, tangent.z);
-          this._lastHeading = heading;
+      // Tube follows only points at least 1 m apart (duplicate points from
+      // stops give a degenerate spline -> NaN geometry), capped in count.
+      const pts = [];
+      const stride = Math.max(1, Math.floor(frames.length / 3000));
+      let last = null;
+      for (let i = 0; i < frames.length; i += stride) {
+        const f = frames[i];
+        if (!last || Math.hypot(f.x - last.x, f.z - last.z) >= 1) {
+          last = new THREE.Vector3(f.x, f.y, f.z);
+          pts.push(last);
         }
       }
+      this.headings = computeHeadings(frames);
+      this._heading = this.headings[0] || 0;
+      this._lastBikePos = null;
+      if (pts.length >= 2) {
+        this.curve = new THREE.CatmullRomCurve3(pts, false, "centripetal");
+        const segs = Math.max(20, Math.min(1500, pts.length * 2));
+        const geometry = new THREE.TubeGeometry(this.curve, segs, 0.9, 8, false);
+        const material = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, emissive: 0x475569, roughness: 0.5, metalness: 0.2 });
+        this.trackMesh = new THREE.Mesh(geometry, material);
+        this.scene.add(this.trackMesh);
+      }
+    }
+
+    // Called on every replay tick. Heading comes from the real positions
+    // around this frame (see computeHeadings), smoothed; the camera snaps
+    // instead of gliding when the bike jumps far (scrub / restart).
+    setPathPosition(index) {
+      if (!this.THREE || this.mode !== "path" || !this.frames || !this.frames.length) return;
+      const THREE = this.THREE;
+      const i = RydRUtils.clamp(index, 0, this.frames.length - 1);
+      const f = this.frames[i];
+      const target = this.headings ? this.headings[i] : 0;
+      const prev = this._lastBikePos;
+      const jumped = !prev || Math.hypot(f.x - prev.x, f.z - prev.z) > 40;
+      this._lastBikePos = { x: f.x, z: f.z };
+      let d = target - this._heading;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      this._heading = jumped ? target : this._heading + d * 0.25;
+      const heading = this._heading;
       this.bikeGroup.position.set(f.x, f.y + 1, f.z);
       this.bikeGroup.rotation.y = heading;
       this.bikeGroup.rotation.z = -(f.roll * DEG2RAD);
 
-      const camOffset = new this.THREE.Vector3(0, 6, -12).applyAxisAngle(new this.THREE.Vector3(0, 1, 0), heading);
-      const target = this.bikeGroup.position.clone().add(camOffset);
-      this.camera.position.lerp(target, 0.12);
+      const camOffset = new THREE.Vector3(0, 7, -20).applyAxisAngle(new THREE.Vector3(0, 1, 0), heading);
+      const camTarget = this.bikeGroup.position.clone().add(camOffset);
+      if (jumped) this.camera.position.copy(camTarget);
+      else this.camera.position.lerp(camTarget, 0.12);
       this.camera.lookAt(this.bikeGroup.position);
     }
 
@@ -692,6 +758,7 @@
     settings: null,
     frames: [],
     trail: [], // rolling {gLat,gLon} window for the friction-circle trail
+    speed: 1,
     mode: "recorded", // "recorded" | "live"
     playing: false,
     index: 0,
@@ -706,6 +773,7 @@
     lastRenderAt: 0,
   };
   const TRAIL_LEN = 30;
+  const PLAYBACK_SPEEDS = [1, 2, 5, 10, 30];
 
   function fmtSec(s) {
     const total = Math.max(0, s);
@@ -743,6 +811,7 @@
 
           <div class="tls-transport" id="tlsTransport">
             <button type="button" class="tls-play-btn" id="tlsPlayBtn" aria-label="Play">▶</button>
+            <button type="button" class="tls-speed-btn" id="tlsSpeedBtn" aria-label="Playback speed">1×</button>
             <input type="range" id="tlsScrub" class="tls-scrub" min="0" max="100" value="0" step="0.1" />
             <span class="tls-time" id="tlsTime">0:00.0 / 0:00.0</span>
           </div>
@@ -777,6 +846,7 @@
       leanVal: rootEl.querySelector("#tlsLeanVal"),
       transport: rootEl.querySelector("#tlsTransport"),
       playBtn: rootEl.querySelector("#tlsPlayBtn"),
+      speedBtn: rootEl.querySelector("#tlsSpeedBtn"),
       scrub: rootEl.querySelector("#tlsScrub"),
       time: rootEl.querySelector("#tlsTime"),
       gaugeCanvas: rootEl.querySelector("#tlsGaugeCanvas"),
@@ -902,9 +972,12 @@
     stopPlaybackLoop();
     const step = () => {
       if (!screenState.els.root || !screenState.els.root.isConnected) return;
+      if (!screenState.playing) {
+        screenState.rafId = null; // idle until startPlayback() schedules a new loop
+        return;
+      }
       screenState.rafId = requestAnimationFrame(step);
-      if (!screenState.playing) return;
-      const elapsed = screenState.startedAtSec + (performance.now() - screenState.startedAtMs) / 1000;
+      const elapsed = screenState.startedAtSec + ((performance.now() - screenState.startedAtMs) / 1000) * screenState.speed;
       const frames2 = screenState.frames;
       let idx = screenState.index;
       while (idx < frames2.length - 1 && frames2[idx + 1].tSec <= elapsed) idx++;
@@ -1106,7 +1179,7 @@
     id: "telemetry-studio",
     name: "Telemetry Studio",
     description: "A 3D ride-replay analytics view — lean angle, friction-circle g-force, and a speed/lean sparkline, synced to a real recorded ride (or live).",
-    version: "1.2.3",
+    version: "1.3.0",
     icon: "🏍️",
     category: "performance",
     standalone: true,
@@ -1219,6 +1292,17 @@
         });
         screenState.els.rideSelect.addEventListener("change", () => {
           if (screenState.mode === "recorded") switchMode("recorded");
+        });
+        screenState.els.speedBtn.addEventListener("click", () => {
+          const next = PLAYBACK_SPEEDS[(PLAYBACK_SPEEDS.indexOf(screenState.speed) + 1) % PLAYBACK_SPEEDS.length];
+          screenState.speed = next;
+          screenState.els.speedBtn.textContent = `${next}×`;
+          if (screenState.playing) {
+            // rebase the clock so the change takes effect from the current frame
+            const f = screenState.frames[screenState.index];
+            screenState.startedAtMs = performance.now();
+            screenState.startedAtSec = f ? f.tSec : 0;
+          }
         });
         screenState.els.playBtn.addEventListener("click", () => {
           if (screenState.playing) pausePlayback();
