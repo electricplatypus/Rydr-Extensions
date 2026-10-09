@@ -6,6 +6,7 @@
   "plugins/hourly-precip": 143,
   "plugins/ridepulse": 415,
   "plugins/spotify-playlists": 268,
+  "plugins/telemetry-studio": 0,
   "screensavers/lap-timer-widget": 12,
   "screensavers/screensaver-example": 39,
   "tools-utilities/demo-plugin": 54,
