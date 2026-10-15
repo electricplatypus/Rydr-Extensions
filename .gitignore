@@ -141,3 +141,10 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Secrets: never commit credentials (GitHub PATs, API tokens)
+*.pat
+*.token
+.github-token
+github-token*
+.secrets/
