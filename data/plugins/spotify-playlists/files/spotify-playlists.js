@@ -26,9 +26,14 @@
     id: 'spotify-playlists',
     name: 'Spotify Playlists',
     description: 'Browse your Spotify playlists as a list or a thumbnail grid, with sort and quick-play.',
-    version: '1.2.0',
+    version: '1.2.1',
     icon: '🎵',
     category: 'media',
+    // Own full-bleed card look, like the first-party Spotify controller —
+    // render() already paints its own header/background/everything
+    // (.sp-plugin-surface), so the generic plugin-card icon/title bar was
+    // just a redundant second header sitting on top of it.
+    standalone: true,
 
     render: function (container, payload) {
       state.container = container;
@@ -115,31 +120,12 @@
     }
   };
 
-  function renderDisconnected(container, spotify) {
-    container.innerHTML = `
-      <div class="sp-plugin-surface sp-disconnected">
-        <div class="sp-icon-large">🎵</div>
-        <div class="sp-subtitle">Connect Spotify to view your playlists and play them directly.</div>
-        <button type="button" class="sp-connect-btn" id="spConnectBtn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.899 4.62-1.02 8.52-.6 11.64 1.32.36.18.48.66.3.102zm1.48-3.3c-.3.48-.9.66-1.38.36-3.24-1.98-8.16-2.58-11.94-1.44-.54.18-1.14-.12-1.32-.66-.18-.54.12-1.14.66-1.32 4.32-1.32 9.78-.66 13.56 1.68.48.3.66.9.42 1.38zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.18-1.26-.18-1.44-.78-.18-.6.18-1.26.78-1.44 4.26-1.26 11.28-1.02 15.72 1.62.54.3.72.96.42 1.5-.3.54-.96.72-1.5.42z"/></svg>
-          Connect Spotify
-        </button>
-      </div>
-    `;
-    const btn = container.querySelector('#spConnectBtn');
-    if (btn) {
-      btn.addEventListener('click', () => {
-        const activeSpotify = getSpotify();
-        if (activeSpotify && typeof activeSpotify.connect === 'function') {
-          activeSpotify.connect();
-        }
-      });
-    }
-  }
-
-  function renderWrapper(container, spotify, viewPrefs) {
-    const isList = viewPrefs.mode === 'list';
-    container.innerHTML = `
+  // Shared <style> block for both the connected wrapper and the
+  // disconnected prompt — extracted so the disconnected state (shown
+  // before a rider has connected Spotify at all) gets the plugin's own
+  // dark, branded styling too instead of sitting unstyled on whatever
+  // background happens to be behind it.
+  const PLUGIN_STYLE = `
       <style>
         .sp-plugin-surface {
           --scale: var(--plugin-scale, 1);
@@ -495,6 +481,35 @@
         }
         @keyframes sp-spin { to { transform: rotate(360deg); } }
       </style>
+`;
+
+  function renderDisconnected(container, spotify) {
+    container.innerHTML = `
+      ${PLUGIN_STYLE}
+      <div class="sp-plugin-surface sp-disconnected">
+        <div class="sp-icon-large">🎵</div>
+        <div class="sp-subtitle">Connect Spotify to view your playlists and play them directly.</div>
+        <button type="button" class="sp-connect-btn" id="spConnectBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.899 4.62-1.02 8.52-.6 11.64 1.32.36.18.48.66.3.102zm1.48-3.3c-.3.48-.9.66-1.38.36-3.24-1.98-8.16-2.58-11.94-1.44-.54.18-1.14-.12-1.32-.66-.18-.54.12-1.14.66-1.32 4.32-1.32 9.78-.66 13.56 1.68.48.3.66.9.42 1.38zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.18-1.26-.18-1.44-.78-.18-.6.18-1.26.78-1.44 4.26-1.26 11.28-1.02 15.72 1.62.54.3.72.96.42 1.5-.3.54-.96.72-1.5.42z"/></svg>
+          Connect Spotify
+        </button>
+      </div>
+    `;
+    const btn = container.querySelector('#spConnectBtn');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        const activeSpotify = getSpotify();
+        if (activeSpotify && typeof activeSpotify.connect === 'function') {
+          activeSpotify.connect();
+        }
+      });
+    }
+  }
+
+  function renderWrapper(container, spotify, viewPrefs) {
+    const isList = viewPrefs.mode === 'list';
+    container.innerHTML = `
+      ${PLUGIN_STYLE}
       <div class="sp-plugin-surface sp-playlists-wrapper" data-mode="${isList ? 'list' : 'thumbnail'}">
         <div class="sp-header">
           <div class="sp-header-left">
@@ -511,6 +526,7 @@
               <button type="button" class="sp-nav-btn" id="spNavPrev" title="Scroll Left" aria-label="Scroll left">‹</button>
               <button type="button" class="sp-nav-btn" id="spNavNext" title="Scroll Right" aria-label="Scroll right">›</button>
             `}
+            <span class="sp-minimize-slot" data-minimize-slot></span>
           </div>
         </div>
         ${isList
