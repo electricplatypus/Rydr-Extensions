@@ -27,6 +27,11 @@ export interface RouteMapEntry {
   id: string;
   name: string;
   description: string;
+  // Turn-by-turn / narrative directions — distinct from `description`
+  // (a JSON-LD or meta-tag source has no equivalent, so this is usually
+  // only populated from a regex-mode source like motorcycleroads.com's
+  // "Written Directions" section).
+  directions: string;
   category: RouteCategory;
   region: string;
   author: string;
@@ -39,11 +44,20 @@ export interface RouteMapEntry {
   tags: string[];
   createdAt: string;
   prUrl: string;
+  // Photo URLs scraped from (or otherwise attached to) the route's source
+  // page — e.g. motorcycleroads.com's own photo gallery. Not the same as a
+  // single "hero image" — a route can have several, or none.
+  photos: string[];
+  // 1-5 "drive enjoyment" rating, when the source page has one (e.g.
+  // motorcycleroads.com rates every road on Scenery/Drive Enjoyment/Tourism
+  // separately) — null when the source has no such rating.
+  experience: number | null;
 }
 
 export interface RouteSubmissionInput {
   name: string;
   description?: string;
+  directions?: string;
   category: string;
   region?: string;
   author?: string;
@@ -51,6 +65,8 @@ export interface RouteSubmissionInput {
   sourceUrl?: string;
   tags?: unknown;
   points: unknown;
+  photos?: unknown;
+  experience?: unknown;
 }
 
 const ROUTE_CATEGORIES = new Set<RouteCategory>(["scenic", "twisty", "rally", "touring", "offroad"]);
@@ -61,6 +77,8 @@ const REGION_MAX = 120;
 const TAG_MAX = 40;
 const TAGS_MAX_COUNT = 12;
 const POINTS_MAX = 20000; // generous ceiling for a long multi-day route track
+const PHOTO_URL_MAX = 500;
+const PHOTOS_MAX_COUNT = 24; // matches api/route-scrape.js's MAX_ARRAY_ITEMS on the RydR side
 
 const SUBMISSION_BRANCH_PREFIX = "route-submission/";
 
@@ -83,6 +101,22 @@ function cleanPoints(value: unknown): RoutePoint[] {
     }
     return { lat, lng };
   });
+}
+
+function cleanPhotos(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((p): p is string => typeof p === "string")
+    .map((p) => cleanString(p, PHOTO_URL_MAX))
+    .filter((p) => /^https?:\/\//i.test(p))
+    .slice(0, PHOTOS_MAX_COUNT);
+}
+
+function cleanExperience(value: unknown): number | null {
+  const n = typeof value === "number" ? value : NaN;
+  if (!Number.isFinite(n)) return null;
+  const rounded = Math.round(n);
+  return rounded >= 1 && rounded <= 5 ? rounded : null;
 }
 
 function haversineMiles(a: RoutePoint, b: RoutePoint): number {
@@ -125,6 +159,7 @@ export function parseRouteSubmission(input: RouteSubmissionInput): { entry: Omit
       id: "", // filled in by submitRoute once the slug is known
       name,
       description: cleanString(input.description, DESC_MAX),
+      directions: cleanString(input.directions, DESC_MAX),
       category,
       region: cleanString(input.region, REGION_MAX),
       author: cleanString(input.author, NAME_MAX) || "Anonymous rider",
@@ -133,6 +168,8 @@ export function parseRouteSubmission(input: RouteSubmissionInput): { entry: Omit
       distanceMi: totalDistanceMiles(points),
       pointCount: points.length,
       tags,
+      photos: cleanPhotos(input.photos),
+      experience: cleanExperience(input.experience),
     },
     points,
   };
@@ -190,6 +227,8 @@ export async function submitRoute(input: RouteSubmissionInput): Promise<{ id: st
         "",
         `- Category: ${entry.category}`,
         `- Distance: ${entry.distanceMi} mi (${entry.pointCount} points)`,
+        entry.experience ? `- Drive enjoyment: ${entry.experience}/5` : "",
+        entry.photos.length ? `- Photos: ${entry.photos.length}` : "",
         `- Source: ${entry.sourceType}${entry.sourceUrl ? ` — ${entry.sourceUrl}` : ""}`,
         `- Submitted by: ${entry.author}`,
         entry.tags.length ? `- Tags: ${entry.tags.join(", ")}` : "",

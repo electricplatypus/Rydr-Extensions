@@ -34,7 +34,11 @@ export default async function RouteMapsAdminPage() {
                 </div>
                 {entry.description && <div className="text-sm text-[var(--text-muted)] mt-0.5">{entry.description}</div>}
                 <div className="text-xs text-[var(--text-muted)] mt-1">
-                  {entry.category} • {entry.distanceMi} mi ({entry.pointCount} pts) • {entry.sourceType}
+                  {entry.category} • {entry.distanceMi} mi ({entry.pointCount} pts)
+                  {entry.experience ? ` • ${entry.experience}/5 drive enjoyment` : ""}
+                  {entry.photos?.length ? ` • ${entry.photos.length} photo${entry.photos.length === 1 ? "" : "s"}` : ""}
+                  {" • "}
+                  {entry.sourceType}
                   {entry.sourceUrl ? (
                     <>
                       {" "}
