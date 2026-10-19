@@ -325,3 +325,69 @@ export async function directAddRoute(input: RouteSubmissionInput): Promise<{ id:
     return { id };
   });
 }
+
+export type RouteEntryPatch = Partial<
+  Pick<RouteMapEntry, "name" | "description" | "category" | "region" | "author" | "tags">
+>;
+
+/**
+ * Edits the metadata fields of an already-published catalog entry (name,
+ * description, category, region, author, tags) — everything else about a
+ * route (its geometry, distance, point count, source type/url) is derived
+ * from the original submission and stays fixed; there's no endpoint for
+ * replacing a route's actual track. Commits straight to main, same as
+ * approveSubmission()/directAddRoute() — gated at the route/middleware
+ * level, not here, same division of responsibility as the rest of this file.
+ */
+export async function updateEntry(id: string, patch: RouteEntryPatch): Promise<RouteMapEntry> {
+  return withRetry(async () => {
+    const index = await currentIndex();
+    const i = index.findIndex((e) => e.id === id);
+    if (i === -1) throw new RouteValidationError(`No catalog entry with id "${id}".`);
+
+    const next: RouteMapEntry = { ...index[i] };
+    if (patch.name !== undefined) {
+      const name = cleanString(patch.name, NAME_MAX);
+      if (!name) throw new RouteValidationError("name cannot be blank.");
+      next.name = name;
+    }
+    if (patch.description !== undefined) next.description = cleanString(patch.description, DESC_MAX);
+    if (patch.category !== undefined) {
+      if (!ROUTE_CATEGORIES.has(patch.category as RouteCategory)) {
+        throw new RouteValidationError(`category must be one of: ${[...ROUTE_CATEGORIES].join(", ")}.`);
+      }
+      next.category = patch.category as RouteCategory;
+    }
+    if (patch.region !== undefined) next.region = cleanString(patch.region, REGION_MAX);
+    if (patch.author !== undefined) next.author = cleanString(patch.author, NAME_MAX);
+    if (patch.tags !== undefined) {
+      if (!Array.isArray(patch.tags)) throw new RouteValidationError("tags must be an array of strings.");
+      next.tags = patch.tags.map((t) => cleanString(t, TAG_MAX)).filter(Boolean).slice(0, TAGS_MAX_COUNT);
+    }
+
+    index[i] = next;
+    await commitFiles(`Edit route: ${next.name}`, [
+      { path: "data/route-maps/index.json", content: JSON.stringify(index, null, 2) + "\n" },
+    ]);
+    return next;
+  });
+}
+
+/**
+ * Removes an entry from the published catalog. Deliberately leaves its
+ * entryFile (the route.json geometry) in place rather than also deleting
+ * that — an orphaned geometry file is harmless (nothing indexes it once
+ * it's out of index.json) and keeping it means a mistaken delete is
+ * trivially recoverable by re-adding the same index entry, without
+ * needing a second commit to also resurrect the geometry.
+ */
+export async function deleteEntry(id: string): Promise<void> {
+  return withRetry(async () => {
+    const index = await currentIndex();
+    const next = index.filter((e) => e.id !== id);
+    if (next.length === index.length) throw new RouteValidationError(`No catalog entry with id "${id}".`);
+    await commitFiles(`Remove route from catalog: ${id}`, [
+      { path: "data/route-maps/index.json", content: JSON.stringify(next, null, 2) + "\n" },
+    ]);
+  });
+}

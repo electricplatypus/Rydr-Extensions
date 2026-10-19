@@ -18,7 +18,7 @@ export default async function RouteMapsAdminPage() {
       <p className="text-[var(--text-muted)] mb-8">
         Approve or reject route-map submissions from the RydR Route Exchange plugin without leaving this page
         &mdash; approving merges the submission&rsquo;s pull request and marks the route live; rejecting closes
-        the PR without merging. Nothing here needs a GitHub login.
+        the PR without merging.
       </p>
 
       {pending.length === 0 ? (
