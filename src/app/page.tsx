@@ -3,6 +3,11 @@ import { CATEGORIES } from "@/lib/categories";
 import { listAllItems } from "@/lib/items";
 import { ItemCard } from "@/components/ItemCard";
 
+// GitHub is the database (see README) — every read must hit it live, so this
+// page can't be statically prerendered at build time (that would also break
+// builds wherever GITHUB_TOKEN isn't set at build time, e.g. Preview).
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const recent = (await listAllItems())
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))

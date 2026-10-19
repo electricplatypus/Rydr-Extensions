@@ -3,6 +3,11 @@ import { CATEGORIES } from "@/lib/categories";
 import { listItems } from "@/lib/items";
 import { DeleteItemButton } from "@/components/DeleteItemButton";
 
+// GitHub is the database (see README) — every read must hit it live, so this
+// page can't be statically prerendered at build time (that would also break
+// builds wherever GITHUB_TOKEN isn't set at build time, e.g. Preview).
+export const dynamic = "force-dynamic";
+
 export default async function AdminPage() {
   const itemsByCategory = await Promise.all(CATEGORIES.map((category) => listItems(category.id, "date", "desc")));
 
