@@ -18,6 +18,32 @@
     { value: 'recent', label: 'Recently Played' }
   ];
 
+  // Library filter buttons: everything, or just one kind. Remembered per
+  // device (a view preference, like list/grid).
+  const FILTERS = [
+    { value: 'all', label: 'All', empty: 'Nothing saved in your Spotify library yet.' },
+    { value: 'playlist', label: 'Playlists', empty: 'No saved playlists.' },
+    { value: 'album', label: 'Albums', empty: 'No saved albums.' },
+    { value: 'audiobook', label: 'Audiobooks', empty: 'No saved audiobooks.' }
+  ];
+  const FILTER_KEY = 'rydr_spotify_library_filter';
+  function getFilter() {
+    try {
+      const v = localStorage.getItem(FILTER_KEY);
+      return FILTERS.some((f) => f.value === v) ? v : 'all';
+    } catch (e) {
+      return 'all';
+    }
+  }
+  function setFilter(v) {
+    try { localStorage.setItem(FILTER_KEY, v); } catch (e) {}
+  }
+  function applyFilter(items) {
+    const f = getFilter();
+    if (f === 'all') return items;
+    return items.filter((p) => (p.type || 'playlist') === f);
+  }
+
   function getSpotify() {
     return root.RydRSpotify || window.RydRSpotify || (typeof RydRSpotify !== 'undefined' ? RydRSpotify : null);
   }
@@ -224,6 +250,37 @@
           min-width: 0;
           cursor: pointer;
         }
+        .sp-filter-bar {
+          display: flex;
+          gap: calc(6px * var(--scale));
+          margin: 0 0 calc(8px * var(--scale));
+          overflow-x: auto;
+          scrollbar-width: none;
+          flex-shrink: 0;
+        }
+        .sp-filter-bar::-webkit-scrollbar { display: none; }
+        .sp-filter-btn {
+          flex: 0 0 auto;
+          min-height: calc(30px * var(--scale));
+          padding: 0 calc(12px * var(--scale));
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          background: transparent;
+          color: rgba(255, 255, 255, 0.78);
+          font-family: inherit;
+          font-size: calc(12px * var(--scale));
+          font-weight: 600;
+          line-height: 1;
+          cursor: pointer;
+          transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .sp-filter-btn:hover { border-color: rgba(255, 255, 255, 0.35); color: #fff; }
+        .sp-filter-btn[aria-pressed="true"] {
+          background: #1db954;
+          border-color: #1db954;
+          color: #0b0b0b;
+        }
+        .sp-filter-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
         .sp-nav-btn {
           background: rgba(255, 255, 255, 0.08);
           border: none;
@@ -529,6 +586,9 @@
             <span class="sp-minimize-slot" data-minimize-slot></span>
           </div>
         </div>
+        <div class="sp-filter-bar" role="group" aria-label="Show">
+          ${FILTERS.map((f) => `<button type="button" class="sp-filter-btn" data-filter="${f.value}" aria-pressed="${f.value === getFilter()}">${f.label}</button>`).join('')}
+        </div>
         ${isList
           ? `<div class="sp-list" id="spList">
               <div class="sp-loading-container"><div class="sp-spinner"></div><span>Loading playlists...</span></div>
@@ -582,6 +642,19 @@
       });
       sortSelect.addEventListener('click', (e) => e.stopPropagation());
     }
+
+    wrapper.querySelectorAll('.sp-filter-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const value = btn.getAttribute('data-filter');
+        if (value === getFilter()) return;
+        setFilter(value);
+        wrapper.querySelectorAll('.sp-filter-btn').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+        const target = wrapper.querySelector('#spGrid') || wrapper.querySelector('#spList');
+        if (target) target.scrollLeft = 0;
+        if (state.loaded) renderItems(wrapper, state.playlists, viewPrefs);
+      });
+    });
 
     if (viewToggleBtn) {
       viewToggleBtn.addEventListener('click', (e) => {
@@ -676,7 +749,7 @@
         // playlist cache" flag too — a real refresh really should hit
         // Spotify again, not just re-serve whatever this or the
         // dashboard's playlists drawer already fetched.
-        playlists = await spotify.getUserPlaylists(40, false, force);
+        playlists = await spotify.getUserPlaylists(200, false, force);
       } else if (typeof spotify.getRecentPlaylists === 'function') {
         playlists = await spotify.getRecentPlaylists(true);
       }
@@ -727,13 +800,20 @@
     return artists || (p.tracksCount ? `${p.tracksCount} tracks` : 'Playlist');
   }
 
-  function renderItems(wrapper, playlists, viewPrefs) {
+  function renderItems(wrapper, allItems, viewPrefs) {
+    const playlists = applyFilter(allItems || []);
     const countEl = wrapper.querySelector('#spPlaylistCount');
     if (countEl) countEl.textContent = playlists.length;
 
     const isList = (viewPrefs && viewPrefs.mode === 'list') || wrapper.dataset.mode === 'list';
     const target = isList ? wrapper.querySelector('#spList') : wrapper.querySelector('#spGrid');
     if (!target) return;
+
+    if (!playlists.length) {
+      const f = FILTERS.find((x) => x.value === getFilter()) || FILTERS[0];
+      target.innerHTML = `<div class="sp-empty-container"><span>${escapeHtml(f.empty)}</span></div>`;
+      return;
+    }
 
     if (isList) {
       target.innerHTML = playlists.map((p) => {
