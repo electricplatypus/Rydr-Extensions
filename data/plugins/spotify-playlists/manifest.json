@@ -4,7 +4,7 @@
   "name": "Spotify Playlists",
   "description": "Browse your Spotify playlists, saved albums, audiobooks and podcasts as a list or a thumbnail grid, with filters, sort and quick-play.",
   "author": "electricplatypus",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "icon": "🎵",
   "repo": "github.com/electricplatypus/rydr",
   "entryFile": "spotify-playlists.js",

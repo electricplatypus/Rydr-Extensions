@@ -13,7 +13,7 @@
     shows: [],
     showsLoaded: false,
     showsLoading: false,
-    openShow: null, // { id, name } while a show's episodes are open
+    openShow: null, // { id, name, kind: 'show' | 'audiobook' } while its episodes / chapters are open
     episodes: [],
     epHasMore: false,
     epLoading: false,
@@ -101,7 +101,7 @@
     id: 'spotify-playlists',
     name: 'Spotify Playlists',
     description: 'Browse your Spotify playlists, saved albums, audiobooks and podcasts as a list or a thumbnail grid, with filters, sort and quick-play.',
-    version: '1.4.0',
+    version: '1.5.0',
     icon: '🎵',
     category: 'media',
     // Own full-bleed card look, like the first-party Spotify controller —
@@ -767,11 +767,11 @@
         }
         <div class="sp-episodes" id="spEpisodes" hidden>
           <div class="sp-ep-head">
-            <button type="button" class="sp-nav-btn" id="spEpBack" title="Back to podcasts" aria-label="Back to podcasts">‹</button>
+            <button type="button" class="sp-nav-btn" id="spEpBack" title="Back" aria-label="Back to the list">‹</button>
             <div class="sp-ep-show" id="spEpShow"></div>
           </div>
           <div class="sp-ep-scroll" id="spEpScroll"></div>
-          <button type="button" class="sp-ep-top" id="spEpTop" title="Newest episodes" aria-label="Back to newest episodes" hidden>↑</button>
+          <button type="button" class="sp-ep-top" id="spEpTop" title="Back to top" aria-label="Back to the top of the list" hidden>↑</button>
         </div>
       </div>
     `;
@@ -839,7 +839,8 @@
         e.stopPropagation();
         state.openShow = null;
         state.epScrollTop = null;
-        renderPodcasts(wrapper, viewPrefs);
+        if (getFilter() === 'podcast') renderPodcasts(wrapper, viewPrefs);
+        else renderItems(wrapper, state.playlists, viewPrefs);
       });
     }
     if (epScroll) {
@@ -879,8 +880,12 @@
         e.stopPropagation();
         refreshBtn.classList.add('sp-spinning');
         const done = () => refreshBtn.classList.remove('sp-spinning');
+        if (state.openShow) {
+          loadEpisodes(wrapper, true).then(done, done);
+          return;
+        }
         if (getFilter() === 'podcast') {
-          (state.openShow ? loadEpisodes(wrapper, true) : loadShows(wrapper, viewPrefs, true)).then(done, done);
+          loadShows(wrapper, viewPrefs, true).then(done, done);
           return;
         }
         state.loaded = false;
@@ -903,7 +908,7 @@
         grid.addEventListener('click', (e) => {
           const card = e.target.closest('.sp-card');
           if (!card) return;
-          if (card.dataset.showId) return openShow(card, wrapper, viewPrefs);
+          if (card.dataset.showId || card.dataset.bookId) return openShow(card, wrapper, viewPrefs);
           playFromCard(card, wrapper);
         });
       }
@@ -911,7 +916,7 @@
       list.addEventListener('click', (e) => {
         const item = e.target.closest('.sp-list-item');
         if (!item) return;
-        if (item.dataset.showId) return openShow(item, wrapper, viewPrefs);
+        if (item.dataset.showId || item.dataset.bookId) return openShow(item, wrapper, viewPrefs);
         playFromCard(item, wrapper);
       });
     }
@@ -1078,10 +1083,13 @@
   }
 
   function openShow(card, wrapper, viewPrefs) {
-    const id = card.dataset.showId;
-    const show = state.shows.find((sh) => sh.id === id);
+    const bookId = card.dataset.bookId;
+    const id = bookId || card.dataset.showId;
+    const show = bookId
+      ? state.playlists.find((p) => p.type === 'audiobook' && p.id === id)
+      : state.shows.find((sh) => sh.id === id);
     if (!show) return;
-    state.openShow = { id: show.id, name: show.name };
+    state.openShow = { id: show.id, name: show.name, kind: bookId ? 'audiobook' : 'show' };
     state.episodes = [];
     state.epHasMore = false;
     state.epFailed = false;
@@ -1095,12 +1103,14 @@
   async function loadEpisodes(wrapper, reset) {
     const spotify = getSpotify();
     const show = state.openShow;
-    if (!show || state.epLoading || !spotify || typeof spotify.getShowEpisodes !== 'function') return;
+    const isBook = !!show && show.kind === 'audiobook';
+    const fetchPage = spotify && (isBook ? spotify.getAudiobookChapters : spotify.getShowEpisodes);
+    if (!show || state.epLoading || typeof fetchPage !== 'function') return;
     state.epLoading = true;
     if (!reset) renderEpisodeFooter(wrapper);
     let page = null;
     try {
-      page = await spotify.getShowEpisodes(show.id, reset ? 0 : state.episodes.length);
+      page = await fetchPage(show.id, reset ? 0 : state.episodes.length);
     } catch (e) {}
     state.epLoading = false;
     if (state.openShow !== show) return; // rider went back / opened another show meanwhile
@@ -1113,10 +1123,24 @@
       const fresh = page.items.filter((e) => !seen.has(e.id));
       state.episodes = reset ? fresh : state.episodes.concat(fresh);
       state.epHasMore = page.hasMore && fresh.length > 0;
+      // A long book: the rider's place can be past the first 50 chapters.
+      // Keep loading while everything so far is finished (max 300 chapters).
+      state.epLoading = true;
+      for (let n = 1; reset && isBook && page.hasProgress && state.epHasMore && n < 6 && state.episodes.every((e) => e.played); n++) {
+        let more = null;
+        try { more = await fetchPage(show.id, state.episodes.length); } catch (e) {}
+        if (state.openShow !== show) { state.epLoading = false; return; }
+        if (!more || !more.items.length) break;
+        const have = new Set(state.episodes.map((e) => e.id));
+        const add = more.items.filter((e) => !have.has(e.id));
+        state.episodes = state.episodes.concat(add);
+        state.epHasMore = more.hasMore && add.length > 0;
+      }
+      state.epLoading = false;
       if (reset) {
         if (page.hasProgress) {
-          const current = state.episodes.find((e) => e.resumeMs > 0 && !e.played);
-          setProgress(show.id, current ? current.name : '');
+          const idx = currentIndex(state.episodes, isBook);
+          setProgress(show.id, idx >= 0 ? state.episodes[idx].name : '');
         }
         state.epScrollTop = null;
       }
@@ -1124,11 +1148,22 @@
     if (wrapper.isConnected) renderEpisodes(wrapper, reset);
   }
 
+  // Where the rider is: the episode/chapter they're partway through. In a
+  // book (read in order) with nothing half-played, it's the chapter after
+  // the last finished one. -1 = nothing started.
+  function currentIndex(list, isBook) {
+    const partial = list.findIndex((e) => e.resumeMs > 0 && !e.played);
+    if (partial >= 0 || !isBook) return partial;
+    let last = -1;
+    list.forEach((e, i) => { if (e.played) last = i; });
+    return last >= 0 && last + 1 < list.length ? last + 1 : -1;
+  }
+
   function episodeRowHtml(ep, isCurrent) {
     const inProgress = ep.resumeMs > 0 && !ep.played;
     const stateText = ep.played ? 'Played' : inProgress ? `${formatMinutes(Math.max(0, ep.durationMs - ep.resumeMs))} left` : '';
     const pct = inProgress && ep.durationMs ? Math.min(100, Math.max(2, Math.round((ep.resumeMs / ep.durationMs) * 100))) : 0;
-    const meta = [formatDate(ep.date), ep.durationMs ? formatMinutes(ep.durationMs) : ''].filter(Boolean).join(' · ');
+    const meta = [ep.number ? `Chapter ${ep.number}` : formatDate(ep.date), ep.durationMs ? formatMinutes(ep.durationMs) : ''].filter(Boolean).join(' · ');
     return `
       <button type="button" class="sp-ep-row${ep.played ? ' sp-ep-played' : ''}${isCurrent ? ' sp-ep-current' : ''}" data-uri="${escapeHtml(ep.uri)}" data-resume="${inProgress ? Math.floor(ep.resumeMs) : 0}">
         <span class="sp-ep-main">
@@ -1149,10 +1184,12 @@
       foot.className = 'sp-ep-foot';
       scroll.appendChild(foot);
     }
+    const book = !!state.openShow && state.openShow.kind === 'audiobook';
     foot.textContent = state.epLoading ? 'Loading…'
-      : state.epFailed ? 'Couldn’t load episodes. Tap refresh to try again.'
-      : state.epHasMore ? 'Scroll for older episodes'
-      : state.episodes.length ? 'That’s every episode.' : 'No episodes yet.';
+      : state.epFailed ? `Couldn’t load ${book ? 'chapters' : 'episodes'}. Tap refresh to try again.`
+      : state.epHasMore ? (book ? 'Scroll for more chapters' : 'Scroll for older episodes')
+      : state.episodes.length ? (book ? 'That’s every chapter.' : 'That’s every episode.')
+      : (book ? 'No chapters found.' : 'No episodes yet.');
   }
 
   // jump=true (first page of a show): open at the episode the rider is
@@ -1167,11 +1204,11 @@
     if (countEl) countEl.textContent = state.episodes.length;
 
     if (!state.episodes.length && state.epLoading) {
-      scroll.innerHTML = '<div class="sp-loading-container"><div class="sp-spinner"></div><span>Loading episodes...</span></div>';
+      scroll.innerHTML = `<div class="sp-loading-container"><div class="sp-spinner"></div><span>Loading ${state.openShow.kind === 'audiobook' ? 'chapters' : 'episodes'}...</span></div>`;
       if (top) top.hidden = true;
       return;
     }
-    const currentIdx = state.episodes.findIndex((e) => e.resumeMs > 0 && !e.played);
+    const currentIdx = currentIndex(state.episodes, state.openShow.kind === 'audiobook');
     scroll.innerHTML = state.episodes.map((ep, i) => episodeRowHtml(ep, i === currentIdx)).join('');
     renderEpisodeFooter(wrapper);
 
@@ -1236,6 +1273,12 @@
 
   function renderItems(wrapper, allItems, viewPrefs) {
     if (getFilter() === 'podcast') return renderPodcasts(wrapper, viewPrefs);
+    if (state.openShow) {
+      // An audiobook's chapters are open: keep them up across redraws.
+      showEpisodePanel(wrapper, true);
+      renderEpisodes(wrapper, false);
+      return;
+    }
     showEpisodePanel(wrapper, false);
     const playlists = applyFilter(allItems || []);
     const countEl = wrapper.querySelector('#spPlaylistCount');
@@ -1251,7 +1294,13 @@
       return;
     }
 
-    target.innerHTML = playlists.map((p) => itemHtml(p, isList, subtitleFor(p))).join('');
+    // Audiobooks open their chapter list (like a podcast show) instead of playing.
+    const progress = readProgress();
+    target.innerHTML = playlists.map((p) => {
+      if (p.type !== 'audiobook') return itemHtml(p, isList, subtitleFor(p));
+      const at = progress[p.id] && progress[p.id].n;
+      return itemHtml(p, isList, at ? `Continue: ${at}` : subtitleFor(p), ` data-book-id="${escapeHtml(p.id)}"`, at ? ' sp-in-progress' : '');
+    }).join('');
 
     const spotify = getSpotify();
     if (spotify && typeof spotify.getState === 'function') {
