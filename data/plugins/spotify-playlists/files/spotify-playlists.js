@@ -8,7 +8,17 @@
     container: null,
     unsubSpotify: null,
     lastPrefsString: '',
-    lastViewPrefsString: ''
+    lastViewPrefsString: '',
+    // Podcasts tab
+    shows: [],
+    showsLoaded: false,
+    showsLoading: false,
+    openShow: null, // { id, name } while a show's episodes are open
+    episodes: [],
+    epHasMore: false,
+    epLoading: false,
+    epFailed: false,
+    epScrollTop: null // remembered so a redraw doesn't lose the place
   };
 
   const SORT_OPTIONS = [
@@ -24,7 +34,10 @@
     { value: 'all', label: 'All', empty: 'Nothing saved in your Spotify library yet.' },
     { value: 'playlist', label: 'Playlists', empty: 'No saved playlists.' },
     { value: 'album', label: 'Albums', empty: 'No saved albums.' },
-    { value: 'audiobook', label: 'Audiobooks', empty: 'No saved audiobooks.' }
+    { value: 'audiobook', label: 'Audiobooks', empty: 'No saved audiobooks.' },
+    // Podcasts is its own view, not part of All: tapping a show opens its
+    // episodes instead of playing it.
+    { value: 'podcast', label: 'Podcasts', empty: 'No followed podcasts.' }
   ];
   const FILTER_KEY = 'rydr_spotify_library_filter';
   function getFilter() {
@@ -44,6 +57,42 @@
     return items.filter((p) => (p.type || 'playlist') === f);
   }
 
+  // Which episode the rider was last on in each show: { showId: { n, t } }.
+  // Lets the shows list put in-progress shows first without fetching every
+  // show's episodes. Updated when a show is opened or an episode is tapped.
+  const PROGRESS_KEY = 'rydr_spotify_show_progress';
+  function readProgress() {
+    try {
+      const o = JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}');
+      return o && typeof o === 'object' && !Array.isArray(o) ? o : {};
+    } catch (e) {
+      return {};
+    }
+  }
+  function setProgress(showId, episodeName) {
+    const map = readProgress();
+    if (episodeName) map[showId] = { n: String(episodeName).slice(0, 200), t: Date.now() };
+    else delete map[showId];
+    const ids = Object.keys(map);
+    if (ids.length > 300) {
+      ids.sort((a, b) => (map[a].t || 0) - (map[b].t || 0)).slice(0, ids.length - 300).forEach((k) => delete map[k]);
+    }
+    try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(map)); } catch (e) {}
+  }
+
+  function formatDate(d) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d || '')) return d || '';
+    const dt = new Date(`${d}T00:00:00`);
+    if (isNaN(dt)) return d;
+    const opts = { month: 'short', day: 'numeric' };
+    if (dt.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric';
+    return dt.toLocaleDateString(undefined, opts);
+  }
+  function formatMinutes(ms) {
+    const min = Math.max(1, Math.round(ms / 60000));
+    return min >= 60 ? `${Math.floor(min / 60)} h ${min % 60} min` : `${min} min`;
+  }
+
   function getSpotify() {
     return root.RydRSpotify || window.RydRSpotify || (typeof RydRSpotify !== 'undefined' ? RydRSpotify : null);
   }
@@ -51,8 +100,8 @@
   const plugin = {
     id: 'spotify-playlists',
     name: 'Spotify Playlists',
-    description: 'Browse your Spotify playlists as a list or a thumbnail grid, with sort and quick-play.',
-    version: '1.3.0',
+    description: 'Browse your Spotify playlists, saved albums, audiobooks and podcasts as a list or a thumbnail grid, with filters, sort and quick-play.',
+    version: '1.4.0',
     icon: '🎵',
     category: 'media',
     // Own full-bleed card look, like the first-party Spotify controller —
@@ -70,6 +119,10 @@
       if (!spotify || !isConnected) {
         state.loaded = false;
         state.playlists = [];
+        state.shows = [];
+        state.showsLoaded = false;
+        state.openShow = null;
+        state.episodes = [];
         state.lastPrefsString = '';
         state.lastViewPrefsString = '';
         if (!container.querySelector('.sp-disconnected')) {
@@ -104,6 +157,8 @@
         // instead of waiting on a fresh network round trip.
         if (wrapper && state.loaded && state.playlists.length && !prefsChanged) {
           renderItems(wrapper, state.playlists, viewPrefs);
+        } else if (wrapper && getFilter() === 'podcast') {
+          renderPodcasts(wrapper, viewPrefs);
         }
       } else {
         applyColumns(wrapper, viewPrefs);
@@ -281,6 +336,115 @@
           color: #0b0b0b;
         }
         .sp-filter-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+        /* Podcasts: a show's episodes replace the grid/list while open. */
+        .sp-playlists-wrapper[data-view="episodes"] .sp-playlists-viewport,
+        .sp-playlists-wrapper[data-view="episodes"] .sp-list,
+        .sp-playlists-wrapper[data-view="episodes"] .sp-sort-select,
+        .sp-playlists-wrapper[data-view="episodes"] #spViewToggleBtn,
+        .sp-playlists-wrapper[data-view="episodes"] #spNavPrev,
+        .sp-playlists-wrapper[data-view="episodes"] #spNavNext,
+        .sp-playlists-wrapper[data-filter="podcast"] .sp-sort-select { display: none; }
+        .sp-episodes[hidden] { display: none; }
+        .sp-episodes {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          flex: 1 1 auto;
+          min-height: calc((4 * 44px + 3 * 4px) * var(--scale));
+          min-width: 0;
+        }
+        .sp-ep-head {
+          display: flex;
+          align-items: center;
+          gap: calc(8px * var(--scale));
+          margin-bottom: calc(6px * var(--scale));
+          min-width: 0;
+        }
+        .sp-ep-show {
+          font-size: calc(13px * var(--scale));
+          font-weight: 700;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          min-width: 0;
+        }
+        .sp-ep-scroll {
+          flex: 1 1 0;
+          min-height: 0;
+          overflow-y: auto;
+          overscroll-behavior: contain;
+          display: flex;
+          flex-direction: column;
+          gap: calc(4px * var(--scale));
+          padding: 2px;
+          scrollbar-width: thin;
+        }
+        .sp-ep-row {
+          display: flex;
+          align-items: center;
+          gap: calc(10px * var(--scale));
+          width: 100%;
+          flex: 0 0 auto;
+          min-height: calc(52px * var(--scale));
+          padding: calc(8px * var(--scale)) calc(10px * var(--scale));
+          border-radius: calc(8px * var(--scale));
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: #fff;
+          font-family: inherit;
+          text-align: left;
+          cursor: pointer;
+          box-sizing: border-box;
+        }
+        .sp-ep-row:hover { background: rgba(255, 255, 255, 0.1); }
+        .sp-ep-row:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+        .sp-ep-row.sp-ep-current { border-color: rgba(29, 185, 84, 0.7); }
+        .sp-ep-row.sp-playing { border-color: #1db954; background: rgba(29, 185, 84, 0.16); }
+        .sp-ep-main { display: flex; flex-direction: column; gap: calc(3px * var(--scale)); min-width: 0; flex: 1; }
+        .sp-ep-title {
+          font-size: calc(12.5px * var(--scale));
+          font-weight: 600;
+          line-height: 1.25;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .sp-ep-played .sp-ep-title { color: rgba(255, 255, 255, 0.55); font-weight: 500; }
+        .sp-ep-meta { font-size: calc(10.5px * var(--scale)); color: rgba(255, 255, 255, 0.55); }
+        .sp-ep-state { margin-left: calc(8px * var(--scale)); color: #1db954; font-weight: 600; }
+        .sp-ep-played .sp-ep-state { color: rgba(255, 255, 255, 0.55); font-weight: 500; }
+        .sp-ep-bar { height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+        .sp-ep-bar > span { display: block; height: 100%; background: #1db954; }
+        .sp-ep-play { flex: 0 0 auto; font-size: calc(11px * var(--scale)); color: rgba(255, 255, 255, 0.6); }
+        .sp-ep-row.sp-playing .sp-ep-play { color: #1db954; }
+        .sp-ep-foot {
+          flex: 0 0 auto;
+          text-align: center;
+          padding: calc(10px * var(--scale)) 0 calc(14px * var(--scale));
+          font-size: calc(10.5px * var(--scale));
+          color: rgba(255, 255, 255, 0.45);
+        }
+        .sp-ep-top[hidden] { display: none; }
+        .sp-ep-top {
+          position: absolute;
+          right: calc(8px * var(--scale));
+          bottom: calc(8px * var(--scale));
+          width: calc(40px * var(--scale));
+          height: calc(40px * var(--scale));
+          border-radius: 50%;
+          border: none;
+          background: #1db954;
+          color: #0b0b0b;
+          font-size: calc(18px * var(--scale));
+          font-weight: 700;
+          line-height: 1;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+          z-index: 5;
+        }
+        .sp-ep-top:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+        .sp-in-progress .sp-card-meta, .sp-in-progress .sp-list-meta { color: #1db954; }
         .sp-nav-btn {
           background: rgba(255, 255, 255, 0.08);
           border: none;
@@ -567,7 +731,7 @@
     const isList = viewPrefs.mode === 'list';
     container.innerHTML = `
       ${PLUGIN_STYLE}
-      <div class="sp-plugin-surface sp-playlists-wrapper" data-mode="${isList ? 'list' : 'thumbnail'}">
+      <div class="sp-plugin-surface sp-playlists-wrapper" data-mode="${isList ? 'list' : 'thumbnail'}" data-filter="${getFilter()}">
         <div class="sp-header">
           <div class="sp-header-left">
             <span>🎵</span>
@@ -601,6 +765,14 @@
               <button type="button" class="sp-side-arrow sp-side-arrow-right" id="spArrowRight" aria-label="Next Playlists">›</button>
             </div>`
         }
+        <div class="sp-episodes" id="spEpisodes" hidden>
+          <div class="sp-ep-head">
+            <button type="button" class="sp-nav-btn" id="spEpBack" title="Back to podcasts" aria-label="Back to podcasts">‹</button>
+            <div class="sp-ep-show" id="spEpShow"></div>
+          </div>
+          <div class="sp-ep-scroll" id="spEpScroll"></div>
+          <button type="button" class="sp-ep-top" id="spEpTop" title="Newest episodes" aria-label="Back to newest episodes" hidden>↑</button>
+        </div>
       </div>
     `;
 
@@ -652,9 +824,44 @@
         wrapper.querySelectorAll('.sp-filter-btn').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
         const target = wrapper.querySelector('#spGrid') || wrapper.querySelector('#spList');
         if (target) target.scrollLeft = 0;
-        if (state.loaded) renderItems(wrapper, state.playlists, viewPrefs);
+        state.openShow = null;
+        if (value === 'podcast') renderPodcasts(wrapper, viewPrefs);
+        else if (state.loaded) renderItems(wrapper, state.playlists, viewPrefs);
+        else showEpisodePanel(wrapper, false);
       });
     });
+
+    const epBack = wrapper.querySelector('#spEpBack');
+    const epScroll = wrapper.querySelector('#spEpScroll');
+    const epTop = wrapper.querySelector('#spEpTop');
+    if (epBack) {
+      epBack.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.openShow = null;
+        state.epScrollTop = null;
+        renderPodcasts(wrapper, viewPrefs);
+      });
+    }
+    if (epScroll) {
+      epScroll.addEventListener('click', (e) => {
+        const row = e.target.closest('.sp-ep-row');
+        if (row) playEpisode(row, wrapper);
+      });
+      epScroll.addEventListener('scroll', () => {
+        state.epScrollTop = epScroll.scrollTop;
+        if (epTop) epTop.hidden = epScroll.scrollTop < 60;
+        // Older episodes load as the rider nears the bottom.
+        if (state.epHasMore && !state.epLoading && epScroll.scrollTop + epScroll.clientHeight > epScroll.scrollHeight - 160) {
+          loadEpisodes(wrapper, false);
+        }
+      }, { passive: true });
+    }
+    if (epTop) {
+      epTop.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (epScroll) epScroll.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
 
     if (viewToggleBtn) {
       viewToggleBtn.addEventListener('click', (e) => {
@@ -671,10 +878,13 @@
       refreshBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         refreshBtn.classList.add('sp-spinning');
+        const done = () => refreshBtn.classList.remove('sp-spinning');
+        if (getFilter() === 'podcast') {
+          (state.openShow ? loadEpisodes(wrapper, true) : loadShows(wrapper, viewPrefs, true)).then(done, done);
+          return;
+        }
         state.loaded = false;
-        fetchPlaylists(wrapper, spotify, true, viewPrefs).then(() => {
-          refreshBtn.classList.remove('sp-spinning');
-        });
+        fetchPlaylists(wrapper, spotify, true, viewPrefs).then(done);
       });
     }
 
@@ -693,6 +903,7 @@
         grid.addEventListener('click', (e) => {
           const card = e.target.closest('.sp-card');
           if (!card) return;
+          if (card.dataset.showId) return openShow(card, wrapper, viewPrefs);
           playFromCard(card, wrapper);
         });
       }
@@ -700,6 +911,7 @@
       list.addEventListener('click', (e) => {
         const item = e.target.closest('.sp-list-item');
         if (!item) return;
+        if (item.dataset.showId) return openShow(item, wrapper, viewPrefs);
         playFromCard(item, wrapper);
       });
     }
@@ -800,7 +1012,231 @@
     return artists || (p.tracksCount ? `${p.tracksCount} tracks` : 'Playlist');
   }
 
+  // ---------- Podcasts ----------
+  function showEpisodePanel(wrapper, on) {
+    const panel = wrapper.querySelector('#spEpisodes');
+    if (panel) panel.hidden = !on;
+    wrapper.dataset.view = on ? 'episodes' : '';
+    wrapper.dataset.filter = getFilter();
+  }
+
+  function renderPodcasts(wrapper, viewPrefs) {
+    if (state.openShow) {
+      showEpisodePanel(wrapper, true);
+      renderEpisodes(wrapper, false);
+      return;
+    }
+    showEpisodePanel(wrapper, false);
+    if (!state.showsLoaded) {
+      loadShows(wrapper, viewPrefs, false);
+      return;
+    }
+    renderShows(wrapper, viewPrefs);
+  }
+
+  async function loadShows(wrapper, viewPrefs, force) {
+    const spotify = getSpotify();
+    if (state.showsLoading || !spotify || typeof spotify.getShows !== 'function') return;
+    state.showsLoading = true;
+    const target = wrapper.querySelector('#spGrid') || wrapper.querySelector('#spList');
+    if (target && !state.showsLoaded) {
+      target.innerHTML = '<div class="sp-loading-container"><div class="sp-spinner"></div><span>Loading podcasts...</span></div>';
+    }
+    try {
+      state.shows = (await spotify.getShows(force)) || [];
+    } catch (e) {
+      state.shows = [];
+    }
+    state.showsLoaded = true;
+    state.showsLoading = false;
+    if (wrapper.isConnected && getFilter() === 'podcast' && !state.openShow) renderShows(wrapper, viewPrefs);
+  }
+
+  // Shows the rider is partway through come first (most recent first),
+  // then the rest in Spotify's order (most recently followed first).
+  function orderedShows() {
+    const progress = readProgress();
+    return state.shows
+      .map((sh, i) => ({ sh, i, t: progress[sh.id] ? progress[sh.id].t || 1 : 0, n: progress[sh.id] ? progress[sh.id].n : '' }))
+      .sort((a, b) => b.t - a.t || a.i - b.i);
+  }
+
+  function renderShows(wrapper, viewPrefs) {
+    const isList = (viewPrefs && viewPrefs.mode === 'list') || wrapper.dataset.mode === 'list';
+    const target = isList ? wrapper.querySelector('#spList') : wrapper.querySelector('#spGrid');
+    const countEl = wrapper.querySelector('#spPlaylistCount');
+    if (countEl) countEl.textContent = state.shows.length;
+    if (!target) return;
+    if (!state.shows.length) {
+      target.innerHTML = '<div class="sp-empty-container"><span>No followed podcasts.</span></div>';
+      return;
+    }
+    target.innerHTML = orderedShows().map(({ sh, n }) => {
+      const meta = n ? `Continue: ${n}` : (sh.episodesCount ? `${sh.episodesCount} episodes` : 'Podcast');
+      return itemHtml(sh, isList, meta, ` data-show-id="${escapeHtml(sh.id)}"`, n ? ' sp-in-progress' : '');
+    }).join('');
+  }
+
+  function openShow(card, wrapper, viewPrefs) {
+    const id = card.dataset.showId;
+    const show = state.shows.find((sh) => sh.id === id);
+    if (!show) return;
+    state.openShow = { id: show.id, name: show.name };
+    state.episodes = [];
+    state.epHasMore = false;
+    state.epFailed = false;
+    state.epScrollTop = null;
+    showEpisodePanel(wrapper, true);
+    renderEpisodes(wrapper, false);
+    loadEpisodes(wrapper, true);
+  }
+
+  // reset=true loads the newest page; otherwise the next (older) page.
+  async function loadEpisodes(wrapper, reset) {
+    const spotify = getSpotify();
+    const show = state.openShow;
+    if (!show || state.epLoading || !spotify || typeof spotify.getShowEpisodes !== 'function') return;
+    state.epLoading = true;
+    if (!reset) renderEpisodeFooter(wrapper);
+    let page = null;
+    try {
+      page = await spotify.getShowEpisodes(show.id, reset ? 0 : state.episodes.length);
+    } catch (e) {}
+    state.epLoading = false;
+    if (state.openShow !== show) return; // rider went back / opened another show meanwhile
+    if (!page) {
+      state.epFailed = true;
+      state.epHasMore = false;
+    } else {
+      state.epFailed = false;
+      const seen = new Set(reset ? [] : state.episodes.map((e) => e.id));
+      const fresh = page.items.filter((e) => !seen.has(e.id));
+      state.episodes = reset ? fresh : state.episodes.concat(fresh);
+      state.epHasMore = page.hasMore && fresh.length > 0;
+      if (reset) {
+        if (page.hasProgress) {
+          const current = state.episodes.find((e) => e.resumeMs > 0 && !e.played);
+          setProgress(show.id, current ? current.name : '');
+        }
+        state.epScrollTop = null;
+      }
+    }
+    if (wrapper.isConnected) renderEpisodes(wrapper, reset);
+  }
+
+  function episodeRowHtml(ep, isCurrent) {
+    const inProgress = ep.resumeMs > 0 && !ep.played;
+    const stateText = ep.played ? 'Played' : inProgress ? `${formatMinutes(Math.max(0, ep.durationMs - ep.resumeMs))} left` : '';
+    const pct = inProgress && ep.durationMs ? Math.min(100, Math.max(2, Math.round((ep.resumeMs / ep.durationMs) * 100))) : 0;
+    const meta = [formatDate(ep.date), ep.durationMs ? formatMinutes(ep.durationMs) : ''].filter(Boolean).join(' · ');
+    return `
+      <button type="button" class="sp-ep-row${ep.played ? ' sp-ep-played' : ''}${isCurrent ? ' sp-ep-current' : ''}" data-uri="${escapeHtml(ep.uri)}" data-resume="${inProgress ? Math.floor(ep.resumeMs) : 0}">
+        <span class="sp-ep-main">
+          <span class="sp-ep-title">${escapeHtml(ep.name)}</span>
+          <span class="sp-ep-meta">${escapeHtml(meta)}${stateText ? `<span class="sp-ep-state">${escapeHtml(stateText)}</span>` : ''}</span>
+          ${pct ? `<span class="sp-ep-bar"><span style="width:${pct}%"></span></span>` : ''}
+        </span>
+        <span class="sp-ep-play" aria-hidden="true">▶</span>
+      </button>`;
+  }
+
+  function renderEpisodeFooter(wrapper) {
+    const scroll = wrapper.querySelector('#spEpScroll');
+    if (!scroll) return;
+    let foot = scroll.querySelector('.sp-ep-foot');
+    if (!foot) {
+      foot = document.createElement('div');
+      foot.className = 'sp-ep-foot';
+      scroll.appendChild(foot);
+    }
+    foot.textContent = state.epLoading ? 'Loading…'
+      : state.epFailed ? 'Couldn’t load episodes. Tap refresh to try again.'
+      : state.epHasMore ? 'Scroll for older episodes'
+      : state.episodes.length ? 'That’s every episode.' : 'No episodes yet.';
+  }
+
+  // jump=true (first page of a show): open at the episode the rider is
+  // partway through, so newer ones are above and older ones below.
+  function renderEpisodes(wrapper, jump) {
+    const scroll = wrapper.querySelector('#spEpScroll');
+    const nameEl = wrapper.querySelector('#spEpShow');
+    const top = wrapper.querySelector('#spEpTop');
+    const countEl = wrapper.querySelector('#spPlaylistCount');
+    if (!scroll || !state.openShow) return;
+    if (nameEl) nameEl.textContent = state.openShow.name;
+    if (countEl) countEl.textContent = state.episodes.length;
+
+    if (!state.episodes.length && state.epLoading) {
+      scroll.innerHTML = '<div class="sp-loading-container"><div class="sp-spinner"></div><span>Loading episodes...</span></div>';
+      if (top) top.hidden = true;
+      return;
+    }
+    const currentIdx = state.episodes.findIndex((e) => e.resumeMs > 0 && !e.played);
+    scroll.innerHTML = state.episodes.map((ep, i) => episodeRowHtml(ep, i === currentIdx)).join('');
+    renderEpisodeFooter(wrapper);
+
+    if (jump && currentIdx > 0) {
+      const row = scroll.querySelectorAll('.sp-ep-row')[currentIdx];
+      if (row) scroll.scrollTop = Math.max(0, row.offsetTop - scroll.offsetTop - (scroll.clientHeight - row.offsetHeight) / 2);
+    } else if (!jump && state.epScrollTop != null) {
+      scroll.scrollTop = state.epScrollTop;
+    }
+    state.epScrollTop = scroll.scrollTop;
+    if (top) top.hidden = scroll.scrollTop < 60;
+
+    const spotify = getSpotify();
+    const np = spotify && typeof spotify.getState === 'function' ? spotify.getState().nowPlaying : null;
+    updateActiveHighlight(wrapper, np);
+  }
+
+  function playEpisode(row, wrapper) {
+    const uri = row.getAttribute('data-uri');
+    const spotify = getSpotify();
+    if (!uri || !spotify || typeof spotify.playContext !== 'function') return;
+    wrapper.querySelectorAll('.sp-ep-row').forEach((r) => r.classList.remove('sp-playing'));
+    row.classList.add('sp-playing');
+    const ep = state.episodes.find((e) => e.uri === uri);
+    if (ep && state.openShow) setProgress(state.openShow.id, ep.name);
+    spotify.playContext(uri, Number(row.getAttribute('data-resume')) || 0);
+  }
+
+  // One card (grid) or row (list). `attrs` / `cls` let the Podcasts view
+  // mark a show so tapping it opens its episodes.
+  function itemHtml(p, isList, metaText, attrs, cls) {
+    const a = attrs || '';
+    const c = cls || '';
+    if (isList) {
+      const imgHtml = p.image
+        ? `<img class="sp-list-thumb" src="${escapeHtml(p.image)}" alt="${escapeHtml(p.name)}" loading="lazy" />`
+        : `<div class="sp-list-thumb">🎵</div>`;
+      return `
+          <div class="sp-list-item${c}" data-uri="${escapeHtml(p.uri)}"${a} title="${escapeHtml(p.name)}">
+            ${imgHtml}
+            <div class="sp-list-info">
+              <div class="sp-list-title">${escapeHtml(p.name)}</div>
+              <div class="sp-list-meta">${escapeHtml(metaText)}</div>
+            </div>
+          </div>
+        `;
+    }
+    const imgHtml = p.image
+      ? `<img class="sp-thumb" src="${escapeHtml(p.image)}" alt="${escapeHtml(p.name)}" loading="lazy" />`
+      : `<div class="sp-thumb">🎵</div>`;
+    return `
+          <div class="sp-card${c}" data-uri="${escapeHtml(p.uri)}"${a} title="${escapeHtml(p.name)}">
+            ${imgHtml}
+            <div class="sp-card-info">
+              <div class="sp-card-title">${escapeHtml(p.name)}</div>
+              <div class="sp-card-meta">${escapeHtml(metaText)}</div>
+            </div>
+            <div class="sp-play-badge">▶</div>
+          </div>
+        `;
+  }
+
   function renderItems(wrapper, allItems, viewPrefs) {
+    if (getFilter() === 'podcast') return renderPodcasts(wrapper, viewPrefs);
+    showEpisodePanel(wrapper, false);
     const playlists = applyFilter(allItems || []);
     const countEl = wrapper.querySelector('#spPlaylistCount');
     if (countEl) countEl.textContent = playlists.length;
@@ -815,40 +1251,7 @@
       return;
     }
 
-    if (isList) {
-      target.innerHTML = playlists.map((p) => {
-        const imgHtml = p.image
-          ? `<img class="sp-list-thumb" src="${escapeHtml(p.image)}" alt="${escapeHtml(p.name)}" loading="lazy" />`
-          : `<div class="sp-list-thumb">🎵</div>`;
-        const metaText = subtitleFor(p);
-        return `
-          <div class="sp-list-item" data-uri="${escapeHtml(p.uri)}" title="${escapeHtml(p.name)}">
-            ${imgHtml}
-            <div class="sp-list-info">
-              <div class="sp-list-title">${escapeHtml(p.name)}</div>
-              <div class="sp-list-meta">${escapeHtml(metaText)}</div>
-            </div>
-          </div>
-        `;
-      }).join('');
-    } else {
-      target.innerHTML = playlists.map((p) => {
-        const imgHtml = p.image
-          ? `<img class="sp-thumb" src="${escapeHtml(p.image)}" alt="${escapeHtml(p.name)}" loading="lazy" />`
-          : `<div class="sp-thumb">🎵</div>`;
-        const metaText = subtitleFor(p);
-        return `
-          <div class="sp-card" data-uri="${escapeHtml(p.uri)}" title="${escapeHtml(p.name)}">
-            ${imgHtml}
-            <div class="sp-card-info">
-              <div class="sp-card-title">${escapeHtml(p.name)}</div>
-              <div class="sp-card-meta">${escapeHtml(metaText)}</div>
-            </div>
-            <div class="sp-play-badge">▶</div>
-          </div>
-        `;
-      }).join('');
-    }
+    target.innerHTML = playlists.map((p) => itemHtml(p, isList, subtitleFor(p))).join('');
 
     const spotify = getSpotify();
     if (spotify && typeof spotify.getState === 'function') {
@@ -861,6 +1264,11 @@
 
   function updateActiveHighlight(wrapper, currentTrack) {
     if (!wrapper || !currentTrack) return;
+    if (currentTrack.uri) {
+      wrapper.querySelectorAll('.sp-ep-row').forEach((row) => {
+        row.classList.toggle('sp-playing', row.getAttribute('data-uri') === currentTrack.uri);
+      });
+    }
     const activeUri = currentTrack.contextUri || currentTrack.playlistUri;
     if (!activeUri) return;
 
