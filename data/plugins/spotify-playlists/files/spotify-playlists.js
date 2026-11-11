@@ -13,7 +13,7 @@
     shows: [],
     showsLoaded: false,
     showsLoading: false,
-    openShow: null, // { id, name, kind: 'show' | 'audiobook' } while its episodes / chapters are open
+    openShow: null, // { id, name, kind: 'show' | 'audiobook' | 'album' | 'playlist' } while its episodes / chapters are open
     episodes: [],
     epHasMore: false,
     epLoading: false,
@@ -69,9 +69,12 @@
       return {};
     }
   }
-  function setProgress(showId, episodeName) {
+  function setProgress(showId, episodeName, uri) {
     const map = readProgress();
-    if (episodeName) map[showId] = { n: String(episodeName).slice(0, 200), t: Date.now() };
+    if (episodeName) {
+      map[showId] = { n: String(episodeName).slice(0, 200), t: Date.now() };
+      if (typeof uri === 'string' && /^spotify:track:[A-Za-z0-9]{22}$/.test(uri)) map[showId].u = uri;
+    }
     else delete map[showId];
     const ids = Object.keys(map);
     if (ids.length > 300) {
@@ -101,7 +104,7 @@
     id: 'spotify-playlists',
     name: 'Spotify Playlists',
     description: 'Browse your Spotify playlists, saved albums, audiobooks and podcasts as a list or a thumbnail grid, with filters, sort and quick-play.',
-    version: '1.5.1',
+    version: '1.6.0',
     icon: '🎵',
     category: 'media',
     // Own full-bleed card look, like the first-party Spotify controller —
@@ -911,7 +914,7 @@
         grid.addEventListener('click', (e) => {
           const card = e.target.closest('.sp-card');
           if (!card) return;
-          if (card.dataset.showId || card.dataset.bookId) return openShow(card, wrapper, viewPrefs);
+          if (card.dataset.showId || card.dataset.bookId || card.dataset.ctxId) return openShow(card, wrapper, viewPrefs);
           playFromCard(card, wrapper);
         });
       }
@@ -919,7 +922,7 @@
       list.addEventListener('click', (e) => {
         const item = e.target.closest('.sp-list-item');
         if (!item) return;
-        if (item.dataset.showId || item.dataset.bookId) return openShow(item, wrapper, viewPrefs);
+        if (item.dataset.showId || item.dataset.bookId || item.dataset.ctxId) return openShow(item, wrapper, viewPrefs);
         playFromCard(item, wrapper);
       });
     }
@@ -1085,14 +1088,22 @@
     }).join('');
   }
 
+  const CONTEXT_KINDS = ['album', 'playlist'];
+  function isContext(show) { return !!show && CONTEXT_KINDS.indexOf(show.kind) >= 0; }
+
   function openShow(card, wrapper, viewPrefs) {
     const bookId = card.dataset.bookId;
-    const id = bookId || card.dataset.showId;
+    const ctxId = card.dataset.ctxId;
+    const id = bookId || ctxId || card.dataset.showId;
     const show = bookId
       ? state.playlists.find((p) => p.type === 'audiobook' && p.id === id)
-      : state.shows.find((sh) => sh.id === id);
+      : ctxId
+        ? state.playlists.find((p) => (p.type === 'album' || p.type === 'playlist' || !p.type) && p.id === id)
+        : state.shows.find((sh) => sh.id === id);
     if (!show) return;
-    state.openShow = { id: show.id, name: show.name, kind: bookId ? 'audiobook' : 'show' };
+    const kind = bookId ? 'audiobook' : ctxId ? (show.type === 'album' ? 'album' : 'playlist') : 'show';
+    const saved = readProgress()[show.id];
+    state.openShow = { id: show.id, name: show.name, kind, uri: show.uri, lastUri: (saved && saved.u) || null };
     state.episodes = [];
     state.epHasMore = false;
     state.epFailed = false;
@@ -1107,21 +1118,34 @@
     const spotify = getSpotify();
     const show = state.openShow;
     const isBook = !!show && show.kind === 'audiobook';
-    const fetchPage = spotify && (isBook ? spotify.getAudiobookChapters : spotify.getShowEpisodes);
+    const ctx = isContext(show);
+    const raw = spotify && (ctx ? spotify.getContextTracks : isBook ? spotify.getAudiobookChapters : spotify.getShowEpisodes);
+    const fetchPage = typeof raw === 'function' ? (ctx ? (id, off) => raw(show.kind, id, off) : raw) : null;
     if (!show || state.epLoading || typeof fetchPage !== 'function') return;
     state.epLoading = true;
     if (!reset) renderEpisodeFooter(wrapper);
     let page = null;
     try {
-      page = await fetchPage(show.id, reset ? 0 : state.episodes.length);
+      if (reset) state.epNext = null;
+      page = await fetchPage(show.id, reset ? 0 : nextOffset());
     } catch (e) {}
     state.epLoading = false;
     if (state.openShow !== show) return; // rider went back / opened another show meanwhile
+    if (!page && show.kind === 'playlist' && reset && !state.episodes.length) {
+      // Spotify doesn't share this playlist's tracks (not one the rider
+      // owns): behave as before and just play it.
+      state.openShow = null;
+      state.epScrollTop = null;
+      if (wrapper.isConnected) renderItems(wrapper, state.playlists, null);
+      if (spotify && typeof spotify.playContext === 'function') spotify.playContext(show.uri);
+      return;
+    }
     if (!page) {
       state.epFailed = true;
       state.epHasMore = false;
     } else {
       state.epFailed = false;
+      if (page.next != null) state.epNext = page.next;
       const seen = new Set(reset ? [] : state.episodes.map((e) => e.id));
       const fresh = page.items.filter((e) => !seen.has(e.id));
       state.episodes = reset ? fresh : state.episodes.concat(fresh);
@@ -1129,11 +1153,14 @@
       // A long book: the rider's place can be past the first 50 chapters.
       // Keep loading while everything so far is finished (max 300 chapters).
       state.epLoading = true;
-      for (let n = 1; reset && isBook && page.hasProgress && state.epHasMore && n < 6 && state.episodes.every((e) => e.played); n++) {
+      // Same for an album/playlist: keep loading until the remembered track shows up.
+      const lookingFor = ctx && show.lastUri;
+      for (let n = 1; reset && state.epHasMore && n < 6 && ((isBook && page.hasProgress && state.episodes.every((e) => e.played)) || (lookingFor && !state.episodes.some((e) => e.uri === lookingFor))); n++) {
         let more = null;
-        try { more = await fetchPage(show.id, state.episodes.length); } catch (e) {}
+        try { more = await fetchPage(show.id, nextOffset()); } catch (e) {}
         if (state.openShow !== show) { state.epLoading = false; return; }
         if (!more || !more.items.length) break;
+        if (more.next != null) state.epNext = more.next;
         const have = new Set(state.episodes.map((e) => e.id));
         const add = more.items.filter((e) => !have.has(e.id));
         state.episodes = state.episodes.concat(add);
@@ -1151,10 +1178,25 @@
     if (wrapper.isConnected) renderEpisodes(wrapper, reset);
   }
 
+  // Next page offset: the API's own count (tracks Spotify can't give us
+  // are skipped, so the list length can be shorter than the offset).
+  function nextOffset() { return state.epNext != null ? state.epNext : state.episodes.length; }
+
   // Where the rider is: the episode/chapter they're partway through. In a
   // book (read in order) with nothing half-played, it's the chapter after
   // the last finished one. -1 = nothing started.
   function currentIndex(list, isBook) {
+    if (isContext(state.openShow)) {
+      // Album/playlist: the track last tapped here, else the one playing now.
+      const want = state.openShow.lastUri;
+      let i = want ? list.findIndex((e) => e.uri === want) : -1;
+      if (i < 0) {
+        const sp = getSpotify();
+        const np = sp && typeof sp.getState === 'function' ? sp.getState().nowPlaying : null;
+        if (np && np.uri) i = list.findIndex((e) => e.uri === np.uri);
+      }
+      return i;
+    }
     const partial = list.findIndex((e) => e.resumeMs > 0 && !e.played);
     if (partial >= 0 || !isBook) return partial;
     let last = -1;
@@ -1166,7 +1208,7 @@
     const inProgress = ep.resumeMs > 0 && !ep.played;
     const stateText = ep.played ? 'Played' : inProgress ? `${formatMinutes(Math.max(0, ep.durationMs - ep.resumeMs))} left` : '';
     const pct = inProgress && ep.durationMs ? Math.min(100, Math.max(2, Math.round((ep.resumeMs / ep.durationMs) * 100))) : 0;
-    const meta = [ep.number ? `Chapter ${ep.number}` : formatDate(ep.date), ep.durationMs ? formatMinutes(ep.durationMs) : ''].filter(Boolean).join(' · ');
+    const meta = [ep.meta != null ? ep.meta : ep.number ? `Chapter ${ep.number}` : formatDate(ep.date), ep.durationMs ? formatMinutes(ep.durationMs) : ''].filter(Boolean).join(' · ');
     return `
       <button type="button" class="sp-ep-row${ep.played ? ' sp-ep-played' : ''}${isCurrent ? ' sp-ep-current' : ''}" data-uri="${escapeHtml(ep.uri)}" data-resume="${inProgress ? Math.floor(ep.resumeMs) : 0}">
         <span class="sp-ep-main">
@@ -1188,11 +1230,13 @@
       scroll.appendChild(foot);
     }
     const book = !!state.openShow && state.openShow.kind === 'audiobook';
+    const ctx = isContext(state.openShow);
+    const noun = ctx ? 'tracks' : book ? 'chapters' : 'episodes';
     foot.textContent = state.epLoading ? 'Loading…'
-      : state.epFailed ? `Couldn’t load ${book ? 'chapters' : 'episodes'}. Tap refresh to try again.`
-      : state.epHasMore ? (book ? 'Scroll for more chapters' : 'Scroll for older episodes')
-      : state.episodes.length ? (book ? 'That’s every chapter.' : 'That’s every episode.')
-      : (book ? 'No chapters found.' : 'No episodes yet.');
+      : state.epFailed ? `Couldn’t load ${noun}. Tap refresh to try again.`
+      : state.epHasMore ? (ctx ? 'Scroll for more tracks' : book ? 'Scroll for more chapters' : 'Scroll for older episodes')
+      : state.episodes.length ? (ctx ? 'That’s every track.' : book ? 'That’s every chapter.' : 'That’s every episode.')
+      : (ctx ? 'No tracks found.' : book ? 'No chapters found.' : 'No episodes yet.');
   }
 
   // jump=true (first page of a show): open at the episode the rider is
@@ -1207,7 +1251,7 @@
     if (countEl) countEl.textContent = state.episodes.length;
 
     if (!state.episodes.length && state.epLoading) {
-      scroll.innerHTML = `<div class="sp-loading-container"><div class="sp-spinner"></div><span>Loading ${state.openShow.kind === 'audiobook' ? 'chapters' : 'episodes'}...</span></div>`;
+      scroll.innerHTML = `<div class="sp-loading-container"><div class="sp-spinner"></div><span>Loading ${isContext(state.openShow) ? 'tracks' : state.openShow.kind === 'audiobook' ? 'chapters' : 'episodes'}...</span></div>`;
       if (top) top.hidden = true;
       return;
     }
@@ -1236,7 +1280,13 @@
     wrapper.querySelectorAll('.sp-ep-row').forEach((r) => r.classList.remove('sp-playing'));
     row.classList.add('sp-playing');
     const ep = state.episodes.find((e) => e.uri === uri);
-    if (ep && state.openShow) setProgress(state.openShow.id, ep.name);
+    if (ep && state.openShow) setProgress(state.openShow.id, ep.name, isContext(state.openShow) ? ep.uri : undefined);
+    if (isContext(state.openShow)) {
+      state.openShow.lastUri = uri;
+      const queue = state.openShow.id === 'liked-songs' ? state.episodes.map((e) => e.uri) : undefined;
+      spotify.playContext(state.openShow.uri, 0, uri, queue);
+      return;
+    }
     spotify.playContext(uri, Number(row.getAttribute('data-resume')) || 0);
   }
 
@@ -1300,6 +1350,10 @@
     // Audiobooks open their chapter list (like a podcast show) instead of playing.
     const progress = readProgress();
     target.innerHTML = playlists.map((p) => {
+      if (p.type === 'album' || p.type === 'playlist' || !p.type) {
+        const at = progress[p.id] && progress[p.id].n;
+        return itemHtml(p, isList, at ? `Continue: ${at}` : subtitleFor(p), ` data-ctx-id="${escapeHtml(p.id)}"`, at ? ' sp-in-progress' : '');
+      }
       if (p.type !== 'audiobook') return itemHtml(p, isList, subtitleFor(p));
       const at = progress[p.id] && progress[p.id].n;
       return itemHtml(p, isList, at ? `Continue: ${at}` : subtitleFor(p), ` data-book-id="${escapeHtml(p.id)}"`, at ? ' sp-in-progress' : '');
