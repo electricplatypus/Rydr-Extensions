@@ -101,7 +101,7 @@
     id: 'spotify-playlists',
     name: 'Spotify Playlists',
     description: 'Browse your Spotify playlists, saved albums, audiobooks and podcasts as a list or a thumbnail grid, with filters, sort and quick-play.',
-    version: '1.5.0',
+    version: '1.5.1',
     icon: '🎵',
     category: 'media',
     // Own full-bleed card look, like the first-party Spotify controller —
@@ -186,6 +186,9 @@
 
       // Fetch playlists ONCE on load, or on user settings change / refresh button click
       if ((!state.loaded || prefsChanged) && !state.loading) {
+        // A changed sort/selection must re-run the list, not re-serve the
+        // already-sorted copy held in state (fetchPlaylists' cache shortcut).
+        if (prefsChanged) state.loaded = false;
         fetchPlaylists(wrapper, spotify, false, viewPrefs);
       }
 
