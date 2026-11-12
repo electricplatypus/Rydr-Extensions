@@ -84,8 +84,8 @@
   const plugin = {
     id: "ride-film-studio",
     name: "Ride Film Studio",
-    description: "Direct a shareable video of a saved ride: cut between 13 cameras, frame each shot, add gauges, map looks and music, then export and share. (Labs)",
-    version: "1.0.0",
+    description: "Direct a shareable video of a saved ride: let the Auto Director cut a highlight reel, or pick your own clips, cameras (including a free camera), keyframed moves and transitions, then export vertical, square or widescreen. (Labs)",
+    version: "1.1.0",
     icon: "🎞️",
     category: "media",
     standalone: true,
@@ -108,7 +108,7 @@
           card.dataset.key = key;
           card.querySelector(".rfs-body").innerHTML = latest
             ? `<div class="rfs-ride"><strong>${esc(latest.title)}</strong><small>${meta(latest)}</small></div>`
-            : '<p class="rfs-empty">Record a ride and direct it here as a video: vertical, square or widescreen.</p>';
+            : '<p class="rfs-empty">Record a ride, then turn it into a highlight reel here: vertical, square or widescreen.</p>';
           card.querySelector(".rfs-actions").innerHTML = latest
             ? `<a class="rfs-btn rfs-btn-primary" href="${esc(studioLink(latest))}">Direct this ride</a><a class="rfs-btn" href="${STUDIO_URL}">All rides</a>`
             : `<a class="rfs-btn" href="${STUDIO_URL}">Open the studio</a>`;
