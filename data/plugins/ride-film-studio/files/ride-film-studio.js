@@ -84,8 +84,8 @@
   const plugin = {
     id: "ride-film-studio",
     name: "Ride Film Studio",
-    description: "Direct a shareable video of a saved ride: let the Auto Director cut a highlight reel, or pick your own clips, cameras (including a free camera), keyframed moves and transitions, then export vertical, square or widescreen. (Labs)",
-    version: "1.1.0",
+    description: "Direct a shareable video of a saved ride: let the Auto Director cut a highlight reel, or mark your own clips in and out, direct the cameras and add transitions, effects and overlays from the add-on store, then export vertical, square or widescreen. (Labs)",
+    version: "1.2.0",
     icon: "🎞️",
     category: "media",
     standalone: true,

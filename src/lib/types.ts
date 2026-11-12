@@ -4,7 +4,8 @@ export type CategoryId =
   | "plugins"
   | "screensavers"
   | "view-extensions"
-  | "tools-utilities";
+  | "tools-utilities"
+  | "studio-addons";
 
 export type RydrCategory =
   | "display"
@@ -35,6 +36,10 @@ export interface MarketplaceItem {
   rydrCategory: RydrCategory;
   // Theme items (app-themes, trackhud-themes) ship color data instead of code
   colors?: Record<string, string>;
+  // Ride Film Studio add-on packs (studio-addons): entryFile is a rydr-studio-pack/1 JSON file
+  license?: string;
+  addonCount?: number;
+  kinds?: ("transition" | "effect" | "overlay")[];
   createdAt: string;
   updatedAt: string;
   downloads: number;

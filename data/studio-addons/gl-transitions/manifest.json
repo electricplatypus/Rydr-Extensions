@@ -1,0 +1,24 @@
+{
+  "id": "gl-transitions",
+  "category": "studio-addons",
+  "name": "GL Transitions",
+  "description": "210 transitions from the open gl-transitions collection: wipes, zooms, warps, glitches, page curls and more.",
+  "author": "gl-transitions contributors",
+  "version": "1.0.0",
+  "icon": "🎞️",
+  "repo": "github.com/gl-transitions/gl-transitions",
+  "entryFile": "gl-transitions.json",
+  "rydrCategory": "tool",
+  "license": "MIT",
+  "addonCount": 210,
+  "kinds": [
+    "transition"
+  ],
+  "createdAt": "2026-11-12T12:00:00.000Z",
+  "updatedAt": "2026-11-12T12:00:00.000Z",
+  "downloads": 0,
+  "tags": [
+    "transitions",
+    "glsl"
+  ]
+}
