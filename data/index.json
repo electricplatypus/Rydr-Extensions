@@ -389,15 +389,15 @@
     "id": "ride-film-studio",
     "category": "plugins",
     "name": "Ride Film Studio",
-    "description": "Direct a shareable video of a saved ride: let the Auto Director cut a highlight reel, or pick your own clips, cameras (including a free camera), keyframed moves and transitions, then export vertical, square or widescreen. (Labs; needs RydR's ride-studio.html page.)",
+    "description": "Direct a shareable video of a saved ride: let the Auto Director cut a highlight reel, or mark your own clips in and out, direct the cameras and add transitions, effects and overlays from the add-on store, then export vertical, square or widescreen. (Labs; needs RydR's ride-studio.html page.)",
     "author": "electricplatypus",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "icon": "🎞️",
     "repo": "github.com/electricplatypus/rydr",
     "entryFile": "ride-film-studio.js",
     "rydrCategory": "media",
     "createdAt": "2026-11-11T22:30:00.000Z",
-    "updatedAt": "2026-11-12T01:30:00.000Z",
+    "updatedAt": "2026-11-12T12:00:00.000Z",
     "downloads": 0,
     "tags": [
       "media",
@@ -405,6 +405,82 @@
       "replay",
       "labs",
       "standalone"
+    ]
+  },
+  {
+    "id": "gl-transitions",
+    "category": "studio-addons",
+    "name": "GL Transitions",
+    "description": "210 transitions from the open gl-transitions collection: wipes, zooms, warps, glitches, page curls and more.",
+    "author": "gl-transitions contributors",
+    "version": "1.0.0",
+    "icon": "🎞️",
+    "repo": "github.com/gl-transitions/gl-transitions",
+    "entryFile": "gl-transitions.json",
+    "rydrCategory": "tool",
+    "license": "MIT",
+    "addonCount": 210,
+    "kinds": [
+      "transition"
+    ],
+    "createdAt": "2026-11-12T12:00:00.000Z",
+    "updatedAt": "2026-11-12T12:00:00.000Z",
+    "downloads": 0,
+    "tags": [
+      "transitions",
+      "glsl"
+    ]
+  },
+  {
+    "id": "glfx-effects",
+    "category": "studio-addons",
+    "name": "glfx.js effects",
+    "description": "Colour adjustments, blurs, warps and stylised looks from Evan Wallace's glfx.js.",
+    "author": "Evan Wallace (glfx.js)",
+    "version": "1.0.0",
+    "icon": "🎨",
+    "repo": "github.com/evanw/glfx.js",
+    "entryFile": "glfx-effects.json",
+    "rydrCategory": "tool",
+    "license": "MIT",
+    "addonCount": 14,
+    "kinds": [
+      "effect",
+      "overlay"
+    ],
+    "createdAt": "2026-11-12T12:00:00.000Z",
+    "updatedAt": "2026-11-12T12:00:00.000Z",
+    "downloads": 0,
+    "tags": [
+      "effects",
+      "overlays",
+      "colour"
+    ]
+  },
+  {
+    "id": "pixi-filters",
+    "category": "studio-addons",
+    "name": "PixiJS filters",
+    "description": "Old film, CRT scanlines, god rays, RGB split and more from the PixiJS filters collection.",
+    "author": "PixiJS filters contributors",
+    "version": "1.0.0",
+    "icon": "📼",
+    "repo": "github.com/pixijs/filters",
+    "entryFile": "pixi-filters.json",
+    "rydrCategory": "tool",
+    "license": "MIT",
+    "addonCount": 7,
+    "kinds": [
+      "overlay",
+      "effect"
+    ],
+    "createdAt": "2026-11-12T12:00:00.000Z",
+    "updatedAt": "2026-11-12T12:00:00.000Z",
+    "downloads": 0,
+    "tags": [
+      "effects",
+      "overlays",
+      "retro"
     ]
   }
 ]

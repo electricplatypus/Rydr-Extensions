@@ -31,6 +31,11 @@ export const CATEGORIES: Category[] = [
     label: "Tools & Utilities",
     description: "Rider tools and utilities that don't fit elsewhere.",
   },
+  {
+    id: "studio-addons",
+    label: "Studio Add-ons",
+    description: "Transition, effect and overlay packs for Ride Film Studio. Shaders and settings, not scripts.",
+  },
 ];
 
 export function getCategory(id: string): Category | undefined {

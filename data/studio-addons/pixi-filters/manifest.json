@@ -1,0 +1,26 @@
+{
+  "id": "pixi-filters",
+  "category": "studio-addons",
+  "name": "PixiJS filters",
+  "description": "Old film, CRT scanlines, god rays, RGB split and more from the PixiJS filters collection.",
+  "author": "PixiJS filters contributors",
+  "version": "1.0.0",
+  "icon": "📼",
+  "repo": "github.com/pixijs/filters",
+  "entryFile": "pixi-filters.json",
+  "rydrCategory": "tool",
+  "license": "MIT",
+  "addonCount": 7,
+  "kinds": [
+    "overlay",
+    "effect"
+  ],
+  "createdAt": "2026-11-12T12:00:00.000Z",
+  "updatedAt": "2026-11-12T12:00:00.000Z",
+  "downloads": 0,
+  "tags": [
+    "effects",
+    "overlays",
+    "retro"
+  ]
+}
